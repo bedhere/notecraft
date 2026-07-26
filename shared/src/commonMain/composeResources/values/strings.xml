@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Notecraft</string>
+    <string name="note_list_title">Notecraft (%d)</string>
+    <string name="search_notes">Search notes...</string>
+    <string name="new_note">+ New Note</string>
+    <string name="import">Import</string>
+    <string name="export">Export</string>
+    <string name="recent">Recent</string>
+    <string name="sort_title">A-Z</string>
+    <string name="no_results">No results for: %s</string>
+    <string name="no_notes">No notes yet. Create one with +.</string>
+    <string name="uncategorized">Uncategorized</string>
+    <string name="untitled_note">Untitled</string>
+    <string name="select_note">Select a note or create a new one</string>
+    <string name="editor_title">Title</string>
+    <string name="editor_content">Content (Markdown)</string>
+    <string name="edit">Edit</string>
+    <string name="split">Split</string>
+    <string name="preview">Preview</string>
+    <string name="save">Save</string>
+    <string name="pin">Pin</string>
+    <string name="words_label">Words: %d</string>
+    <string name="save_state_unsaved">Unsaved</string>
+    <string name="save_state_saving">Saving...</string>
+    <string name="save_state_saved">Saved</string>
+    <string name="save_state_error">Error: %s</string>
+    <string name="delete_title">Delete Note</string>
+    <string name="delete_message">Are you sure? This cannot be undone.</string>
+    <string name="delete_confirm">Delete</string>
+    <string name="cancel">Cancel</string>
+    <string name="settings">Settings</string>
+    <string name="theme">Theme</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="theme_system">System</string>
+    <string name="font_size">Font Size</string>
+    <string name="auto_save">Auto Save</string>
+    <string name="auto_save_enabled">Enabled</string>
+    <string name="auto_save_disabled">Disabled</string>
+    <string name="tab_indent">Tab Indent Size</string>
+</resources>

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Notecraft</string>
+    <string name="note_list_title">Notecraft?%d?</string>
+    <string name="search_notes">????…</string>
+    <string name="new_note">+ ????</string>
+    <string name="import">??</string>
+    <string name="export">??</string>
+    <string name="recent">??</string>
+    <string name="sort_title">???</string>
+    <string name="no_results">?????%s</string>
+    <string name="no_notes">???????? + ??</string>
+    <string name="uncategorized">???</string>
+    <string name="untitled_note">???</string>
+    <string name="select_note">?????????</string>
+    <string name="editor_title">??</string>
+    <string name="editor_content">???Markdown?</string>
+    <string name="edit">??</string>
+    <string name="split">??</string>
+    <string name="preview">??</string>
+    <string name="save">??</string>
+    <string name="pin">??</string>
+    <string name="words_label">???%d</string>
+    <string name="save_state_unsaved">???</string>
+    <string name="save_state_saving">???…</string>
+    <string name="save_state_saved">???</string>
+    <string name="save_state_error">???%s</string>
+    <string name="delete_title">????</string>
+    <string name="delete_message">???????????????</string>
+    <string name="delete_confirm">??</string>
+    <string name="cancel">??</string>
+    <string name="settings">??</string>
+    <string name="theme">??</string>
+    <string name="theme_light">??</string>
+    <string name="theme_dark">??</string>
+    <string name="theme_system">????</string>
+    <string name="font_size">????</string>
+    <string name="auto_save">????</string>
+    <string name="auto_save_enabled">???</string>
+    <string name="auto_save_disabled">???</string>
+    <string name="tab_indent">Tab ????</string>
+</resources>
