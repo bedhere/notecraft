@@ -11,9 +11,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import com.notecraft.util.Strings
 import com.notecraft.domain.model.AppConfig
 import com.notecraft.presentation.settings.SettingsState
+import com.notecraft.util.Strings
 
 @Composable
 fun SettingsContent(
@@ -34,17 +34,21 @@ fun SettingsContent(
         Text(Strings.settings, style = MaterialTheme.typography.headlineSmall,
             modifier = Modifier.padding(bottom = 16.dp))
 
-        // Appearance section
-        SettingsSection(Strings.settings + "")
+        SettingsSection(Strings.appearance)
 
         Text(Strings.theme, style = MaterialTheme.typography.labelMedium,
             modifier = Modifier.padding(top = 8.dp, bottom = 4.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf("light", "dark", "system").forEach { theme ->
+            val themeOptions = listOf(
+                Triple("light", Strings.themeLight, Strings.themeLight),
+                Triple("dark", Strings.themeDark, Strings.themeDark),
+                Triple("system", Strings.themeSystem, Strings.themeSystem)
+            )
+            themeOptions.forEach { (value, label, _) ->
                 FilterChip(
-                    selected = config.theme == theme,
-                    onClick = { onThemeChange(theme) },
-                    label = { Text(theme.replaceFirstChar { it.uppercase() }) }
+                    selected = config.theme == value,
+                    onClick = { onThemeChange(value) },
+                    label = { Text(label) }
                 )
             }
         }
@@ -61,7 +65,7 @@ fun SettingsContent(
 
         // Editor section
         Spacer(Modifier.height(16.dp))
-        SettingsSection("Editor")
+        SettingsSection(Strings.editorSection)
 
         Text(Strings.tabIndent + ": " + config.tabIndentSize,
             style = MaterialTheme.typography.labelMedium,
@@ -88,10 +92,10 @@ fun SettingsContent(
         }
 
         Spacer(Modifier.height(16.dp))
-        SettingsSection("About")
+        SettingsSection(Strings.aboutSection)
         Text(Strings.appName, style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.padding(top = 4.dp))
-        Text(Strings.settings, style = MaterialTheme.typography.bodySmall,
+        Text(Strings.version, style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
 
         Spacer(Modifier.height(24.dp))

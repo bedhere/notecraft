@@ -23,3 +23,5 @@ node_modules/
 
 .kotlin/
 kotlin-js-store/
+# Migration documentation
+docs/

@@ -55,6 +55,15 @@
      const val autoSave = "自动保存"
      const val autoSaveEnabled = "已启用"
      const val autoSaveDisabled = "已禁用"
-     const val tabIndent = "Tab 缩进大小"
-     const val loading = "加载中…"
- }
+    const val tabIndent = "Tab 缩进大小"
+    const val loading = "加载中…"
+    const val appearance = "外观"
+    const val editorSection = "编辑器"
+    const val aboutSection = "关于"
+    const val version = "版本 1.0.0"
+    const val deleteConfirmTitle = "确认删除"
+    const val saveFailed = "保存失败"
+    const val importFailed = "导入失败"
+    const val exportFailed = "导出失败"
+    const val loadFailed = "加载失败"
+}

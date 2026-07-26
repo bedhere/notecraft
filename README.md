@@ -1,41 +1,86 @@
-This is a Kotlin Multiplatform project targeting Android, Web, Desktop (JVM).
+﻿# Notecraft 笔记工坊
 
-* [/shared](./shared/src) is for code that will be shared across your Compose Multiplatform applications.
-  It contains several subfolders:
-  - [commonMain](./shared/src/commonMain/kotlin) is for code that’s common for all targets.
-  - Other folders are for Kotlin code that will be compiled for only the platform indicated in the folder name.
-    For example, if you want to use Apple’s CoreCrypto for the iOS part of your Kotlin app,
-    the [iosMain](./shared/src/iosMain/kotlin) folder would be the right place for such calls.
-    Similarly, if you want to edit the Desktop (JVM) specific part, the [jvmMain](./shared/src/jvmMain/kotlin)
-    folder is the appropriate location.
+A cross-platform note-taking application built with Kotlin Multiplatform + Compose Multiplatform, inspired by [Floral Notepaper](https://github.com/Achilng/floral-notepaper).
 
-### Running the apps
+## Features
 
-Use the run configurations provided by the run widget in your IDE's toolbar. You can also use these commands and options:
+- Create, edit, and delete notes with Markdown support
+- Auto-save with debounce (800ms) and serialized save queue
+- Markdown real-time preview (Edit / Split / Preview modes)
+- Search and sort notes
+- Dark / Light / System theme
+- Import and export Markdown files
+- Desktop: system tray, global shortcuts, tile mode, window state persistence
+- Web: browser localStorage persistence
+- Android: mobile-optimized navigation (list → detail), state restoration
 
-- Android app: `./gradlew :androidApp:assembleDebug`
-- Desktop app:
-  - Hot reload: `./gradlew :desktopApp:hotRun --auto`
-  - Standard run: `./gradlew :desktopApp:run`
-- Web app:
-  - Wasm target (faster, modern browsers): `./gradlew :webApp:wasmJsBrowserDevelopmentRun`
-  - JS target (slower, supports older browsers): `./gradlew :webApp:jsBrowserDevelopmentRun`
+## Architecture
 
-### Running tests
+`
+notecraft/
+├── shared/                  # KMP shared module
+│   ├── commonMain/          # Cross-platform code
+│   │   ├── domain/model/    # Note, NoteMetadata, AppConfig
+│   │   ├── domain/repository/  # Repository interfaces
+│   │   ├── data/repository/    # Repository implementations
+│   │   ├── data/storage/       # Storage interfaces
+│   │   ├── presentation/       # ViewModels + UI state
+│   │   └── ui/                 # Composable screens, Markdown renderer, Theme
+│   ├── jvmMain/             # Desktop (JVM) platform
+│   ├── androidMain/         # Android platform
+│   ├── jsMain/              # Web (JS) platform
+│   └── wasmJsMain/          # Web (Wasm) platform
+├── androidApp/              # Android entry point
+├── desktopApp/              # Desktop entry point (tray, shortcuts, tiles)
+└── webApp/                  # Web entry point
+`
 
-Use the run button in your IDE's editor gutter, or run tests using Gradle tasks:
+## Build & Run
 
-- Android tests: `./gradlew :shared:testAndroidHostTest`
-- Desktop tests: `./gradlew :shared:jvmTest`
-- Web tests:
-  - Wasm target: `./gradlew :shared:wasmJsTest`
-  - JS target: `./gradlew :shared:jsTest`
+### Desktop
 
----
+`ash
+./gradlew :desktopApp:run
+`
 
-Learn more about [Kotlin Multiplatform](https://www.jetbrains.com/help/kotlin-multiplatform-dev/get-started.html),
-[Compose Multiplatform](https://github.com/JetBrains/compose-multiplatform/#compose-multiplatform),
-[Kotlin/Wasm](https://kotl.in/wasm/)…
+### Web
 
-We would appreciate your feedback on Compose/Web and Kotlin/Wasm in the public Slack channel [#compose-web](https://slack-chats.kotlinlang.org/c/compose-web).
-If you face any issues, please report them on [YouTrack](https://youtrack.jetbrains.com/newIssue?project=CMP).
+`ash
+# Development (JS)
+./gradlew :webApp:jsBrowserDevelopmentRun
+
+# Production build
+./gradlew :webApp:jsProductionExecutableCompileSync
+`
+
+### Android
+
+`ash
+./gradlew :androidApp:assembleDebug
+`
+
+## Tests
+
+`ash
+# Shared module tests (JVM)
+./gradlew :shared:jvmTest
+
+# All tests
+./gradlew :shared:allTests
+`
+
+## Technical Stack
+
+- **Language**: Kotlin 2.4.10
+- **UI Framework**: Compose Multiplatform 1.11.1
+- **Minimum SDK**: Android 24
+- **Architecture**: Repository pattern + ViewModel + StateFlow
+- **Serialization**: kotlinx-serialization-json
+- **Persistence**: JSON files (Desktop/Android), localStorage (Web)
+- **Desktop features**: Compose Desktop Window API + tray/shortcut plugins
+
+## License
+
+MIT License. See [LICENSE](LICENSE) for details.
+
+Based on [Floral Notepaper](https://github.com/Achilng/floral-notepaper) (MIT).
