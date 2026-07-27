@@ -66,6 +66,7 @@ kotlin {
         commonTest.dependencies {
             implementation(libs.kotlin.test)
             implementation(libs.kotlinx.coroutines.test)
+            implementation(libs.kotlinx.datetime)
         }
         jsMain.dependencies {
             implementation(libs.wrappers.browser)

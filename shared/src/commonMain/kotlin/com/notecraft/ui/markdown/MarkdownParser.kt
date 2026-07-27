@@ -40,7 +40,7 @@ object MarkdownParser {
                     i++
                 }
                 // Heading
-                line.matches(Regex("^#{1,6}\\s")) -> {
+                Regex("^#{1,6}\\s").containsMatchIn(line) -> {
                     val level = line.takeWhile { it == '#' }.length
                     val text = parseInline(line.drop(level).trim())
                     blocks.add(MdBlock.Heading(level, text))
@@ -127,7 +127,7 @@ object MarkdownParser {
                     val paraLines = mutableListOf(line)
                     i++
                     while (i < lines.size && lines[i].isNotBlank() &&
-                           !lines[i].matches(Regex("^#{1,6}\\s")) &&
+                           !Regex("^#{1,6}\\s").containsMatchIn(lines[i]) &&
                            !lines[i].trimStart().startsWith("```") &&
                            !lines[i].trimStart().startsWith(">") &&
                            !lines[i].trimStart().matches(Regex("^[-*+]\\s.*")) &&
