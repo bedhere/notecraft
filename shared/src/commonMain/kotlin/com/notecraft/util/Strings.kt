@@ -66,4 +66,8 @@
     const val importFailed = "导入失败"
     const val exportFailed = "导出失败"
     const val loadFailed = "加载失败"
+    const val trayShow = "显示笔记工坊"
+    const val trayQuickNote = "快速笔记"
+    const val trayCloseToTray = "关闭到托盘"
+    const val trayQuit = "退出"
 }

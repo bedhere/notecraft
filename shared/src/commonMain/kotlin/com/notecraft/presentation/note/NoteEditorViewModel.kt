@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.notecraft.domain.model.SaveNoteRequest
 import com.notecraft.domain.repository.NoteRepository
+import com.notecraft.util.Strings
 import com.notecraft.util.NoteUtils
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -41,7 +42,7 @@ class NoteEditorViewModel(
                 )
             } catch (e: Exception) {
                 _state.value = _state.value.copy(
-                    saveState = SaveState.Error(e.message ?: "Failed to load note")
+                    saveState = SaveState.Error(e.message ?: Strings.loadFailed)
                 )
             }
         }
@@ -85,7 +86,7 @@ class NoteEditorViewModel(
                 _state.value = _state.value.copy(saveState = SaveState.Saved)
             } catch (e: Exception) {
                 _state.value = _state.value.copy(
-                    saveState = SaveState.Error(e.message ?: "Save failed")
+                    saveState = SaveState.Error(e.message ?: Strings.saveFailed)
                 )
             }
         }
@@ -107,9 +108,9 @@ class NoteEditorViewModel(
                     noteRepository.updateNote(noteId, SaveNoteRequest(s.title, s.content, ""))
                     _state.value = _state.value.copy(saveState = SaveState.Saved)
                 } catch (e: Exception) {
-                    _state.value = _state.value.copy(
-                        saveState = SaveState.Error(e.message ?: "Save failed before switching note")
-                    )
+                _state.value = _state.value.copy(
+                    saveState = SaveState.Error(e.message ?: Strings.saveFailed)
+                )
                 }
             }
             block()

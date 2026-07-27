@@ -1,5 +1,6 @@
 package com.bedhere.app
 
+import com.notecraft.util.Strings
 import com.notecraft.data.repository.SettingsRepositoryImpl
 import com.notecraft.storage.JvmSettingsStorage
 import java.awt.*
@@ -20,7 +21,7 @@ class TrayManager(
         removeExisting()
         val icon = createIcon()
         val popup = createPopup()
-        trayIcon = TrayIcon(icon, "Notecraft", popup).apply {
+        trayIcon = TrayIcon(icon, Strings.appName, popup).apply {
             isImageAutoSize = true
             addActionListener { onShowMain() }
         }
@@ -39,7 +40,7 @@ class TrayManager(
         try {
             val tray = SystemTray.getSystemTray()
             for (icon in tray.trayIcons) {
-                if (icon.toolTip == "Notecraft") tray.remove(icon)
+                if (icon.toolTip == Strings.appName) tray.remove(icon)
             }
         } catch (_: Exception) {}
     }
@@ -66,17 +67,17 @@ class TrayManager(
 
         val menu = PopupMenu()
 
-        val showItem = MenuItem("Show Notecraft")
+        val showItem = MenuItem(Strings.trayShow)
         showItem.addActionListener { onShowMain() }
         menu.add(showItem)
 
-        val noteItem = MenuItem("Quick Note")
+        val noteItem = MenuItem(Strings.trayQuickNote)
         noteItem.addActionListener { onQuickNote() }
         menu.add(noteItem)
 
         menu.addSeparator()
 
-        val trayItem = CheckboxMenuItem("Close to Tray")
+        val trayItem = CheckboxMenuItem(Strings.trayCloseToTray)
         trayItem.state = closeToTray
         trayItem.addItemListener {
             runBlocking {
@@ -88,7 +89,7 @@ class TrayManager(
 
         menu.addSeparator()
 
-        val quitItem = MenuItem("Quit")
+        val quitItem = MenuItem(Strings.trayQuit)
         quitItem.addActionListener { onQuit() }
         menu.add(quitItem)
 

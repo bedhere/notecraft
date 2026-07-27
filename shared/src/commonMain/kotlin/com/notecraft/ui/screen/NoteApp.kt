@@ -78,7 +78,7 @@ fun NoteApp(
                     showDeleteConfirm = null
                     if (noteId == listState.selectedNoteId) editorViewModel.clearEditor()
                     listViewModel.deleteNote(noteId)
-                }) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+                }) { Text(Strings.deleteConfirm, color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = { TextButton(onClick = { showDeleteConfirm = null }) { Text(Strings.cancel) } }
         )
@@ -226,7 +226,7 @@ fun NoteListPanel(
         ) {
             if (state.filteredNotes.isEmpty()) {
                 item {
-                    val emptyMsg = if (state.searchQuery.isNotBlank()) "No results for: " + state.searchQuery else "No notes yet. Create one with +."
+                    val emptyMsg = if (state.searchQuery.isNotBlank()) Strings.noResultsFor(state.searchQuery) else Strings.noNotesYet
                     Text(emptyMsg, style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(16.dp))
                 }
@@ -253,7 +253,7 @@ fun NoteListPanel(
                             Text(text = title, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
                             TextButton(onClick = { onDeleteNote(note.id) },
                                 contentPadding = PaddingValues(horizontal = 4.dp), modifier = Modifier.size(28.dp)) {
-                                Text("x", fontSize = 12.sp)
+                                Text("×", fontSize = 14.sp)
                             }
                         }
                     }
@@ -343,7 +343,7 @@ fun EditorPanel(
                             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next))
                         Spacer(Modifier.height(8.dp))
                         OutlinedTextField(value = state.content, onValueChange = onContentChange,
-                            label = { Text("Markdown") },
+                            label = { Text(Strings.editorContent) },
                             modifier = Modifier.fillMaxSize(),
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text))
                     }
