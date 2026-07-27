@@ -15,7 +15,10 @@ import java.io.File
 private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
 @Serializable
-private data class NotesFile(val notes: List<Note> = emptyList())
+private data class NotesFile(
+    val version: Int = 1,
+    val notes: List<Note> = emptyList()
+)
 
 class JvmNoteStorage(private val dataDir: String) : NoteStorage {
     private val notesFile: File get() = File(dataDir, "notes.json")
@@ -118,7 +121,7 @@ class JvmNoteStorage(private val dataDir: String) : NoteStorage {
 
     private fun writeAllNotes(notes: List<Note>) {
         notesFile.parentFile?.mkdirs()
-        notesFile.writeText(jsonEngine.encodeToString(NotesFile(notes)))
+        notesFile.writeText(jsonEngine.encodeToString(NotesFile(notes = notes)))
     }
 }
 

@@ -17,7 +17,10 @@ private const val NOTES_KEY = "notecraft.notes"
 private const val CONFIG_KEY = "notecraft.config"
 
 @Serializable
-private data class NotesFile(val notes: List<Note> = emptyList())
+private data class NotesFile(
+    val version: Int = 1,
+    val notes: List<Note> = emptyList()
+)
 
 class JsNoteStorage : NoteStorage {
     private fun readNotes(): List<Note> {
@@ -26,7 +29,7 @@ class JsNoteStorage : NoteStorage {
     }
 
     private fun writeNotes(notes: List<Note>) {
-        localStorage.setItem(NOTES_KEY, json.encodeToString(NotesFile(notes)))
+        localStorage.setItem(NOTES_KEY, json.encodeToString(NotesFile(notes = notes)))
     }
 
     override suspend fun loadMetadata(): List<NoteMetadata> =

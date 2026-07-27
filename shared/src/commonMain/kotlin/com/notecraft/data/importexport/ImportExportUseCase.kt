@@ -8,9 +8,14 @@ class ImportExportUseCase(
     private val noteRepository: NoteRepository,
     private val fileDialog: FileDialogService
 ) {
+    companion object {
+        const val MAX_IMPORT_SIZE = 10 * 1024 * 1024 // 10 MB
+    }
+
     suspend fun importMarkdownFile(category: String = ""): Boolean {
         val content = fileDialog.openAndRead() ?: return false
         if (content.isBlank()) return false
+        if (content.length > MAX_IMPORT_SIZE) return false
         val title = extractTitle(content)
         val fileName = NoteUtils.buildFileName("import", title)
         noteRepository.createNote(SaveNoteRequest(

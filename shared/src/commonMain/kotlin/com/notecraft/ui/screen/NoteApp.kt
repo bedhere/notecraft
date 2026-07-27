@@ -21,9 +21,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.notecraft.data.repository.InMemoryNoteRepository
-import com.notecraft.data.repository.SettingsRepositoryImpl
-import com.notecraft.data.storage.InMemorySettingsStorage
 import com.notecraft.data.importexport.ImportExportUseCase
 import com.notecraft.data.importexport.FileDialogService
 import com.notecraft.domain.model.ViewMode
@@ -42,8 +39,8 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun NoteApp(
-    noteRepository: NoteRepository = remember { InMemoryNoteRepository() },
-    settingsRepository: SettingsRepository = remember { SettingsRepositoryImpl(InMemorySettingsStorage()) },
+    noteRepository: NoteRepository,
+    settingsRepository: SettingsRepository,
     fileDialogService: FileDialogService? = null,
     onToggleTile: ((String) -> Unit)? = null
 ) {
@@ -166,7 +163,10 @@ fun NoteListPanel(
             verticalAlignment = Alignment.CenterVertically) {
             Text(Strings.noteListTitle(state.filteredNotes.size),
                 style = MaterialTheme.typography.titleMedium)
-            IconButton(onClick = onSettingsClick, modifier = Modifier.size(AppSpacing.iconButtonSmall)) {
+            IconButton(
+                onClick = onSettingsClick,
+                modifier = Modifier.size(AppSpacing.iconButtonSmall)
+            ) {
                 Text("...", fontSize = 14.sp)
             }
         }
@@ -337,15 +337,18 @@ fun EditorPanel(
             }
             Spacer(Modifier.width(AppSpacing.sm))
             onToggleTile?.let { toggle ->
-                IconButton(onClick = { toggle(state.noteId!!) }, modifier = Modifier.size(AppSpacing.iconButtonMedium)) {
+                IconButton(onClick = { state.noteId?.let { toggle(it) } }, modifier = Modifier.size(AppSpacing.iconButtonMedium)) {
                     Text(Strings.pin, fontSize = 10.sp)
                 }
             }
             Spacer(Modifier.width(AppSpacing.sm))
             Text(Strings.words(state.wordCount), style = MaterialTheme.typography.labelSmall)
             Spacer(Modifier.width(AppSpacing.md))
-            Button(onClick = onSave, enabled = state.saveState is SaveState.Dirty,
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)) {
+            Button(
+                onClick = onSave,
+                enabled = state.saveState is SaveState.Dirty,
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+            ) {
                 Text(Strings.save, style = MaterialTheme.typography.labelMedium)
             }
         }

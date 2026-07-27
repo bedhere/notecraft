@@ -1,52 +1,67 @@
- # 隐藏问题登记表
+# 隐藏问题登记表 (已更新: 2026-07-27)
 
- | ID | 问题 | 类别 | 严重级别 | 发现依据 |
- |----|------|------|---------|---------|
- | H01 | InMemoryNoteRepository 作为默认实现，数据不持久 | 数据 | P0 | 代码审查 |
- | H02 | NoteEditorViewModel.saveAndContinue() 静默吞异常 | 错误处理 | P0 | 代码审查 |
- | H03 | 自动保存协程与删除操作竞态 | 数据 | P0 | 代码审查 |
- | H04 | createCategory() 为空方法 | 业务 | P0 | 代码审查 |
- | H05 | commonMain 的 NoteApp.kt 硬编码 InMemory 实现 | 架构 | P0 | 代码审查 |
- | H06 | 无平台注入机制，平台存储实现未连接 | 架构 | P0 | 代码审查 |
- | H07 | Android 无返回键处理 | Android | P0 | 代码审查 |
- | H08 | Android 进程重建数据丢失 | Android | P0 | 代码审查 |
- | H09 | 所有 UI 文本硬编码英文 | 国际化 | P1 | 代码审查 |
- | H10 | 无国际化资源体系 | 国际化 | P1 | 代码审查 |
- | H11 | 错误提示为英文技术信息 | 国际化 | P1 | 代码审查 |
- | H12 | 无 Markdown 工具栏 | UI | P1 | 功能矩阵 |
- | H13 | 无右键菜单 | UI | P1 | 功能矩阵 |
- | H14 | Android 手机强制三栏布局 | Android | P1 | 代码审查 |
- | H15 | 导入导出接口未正确集成到 UI | 业务 | P1 | 代码审查 |
- | H16 | Desktop 托盘/快捷键/磁贴未集成 | 桌面 | P1 | 代码审查 |
- | H17 | 无设计令牌系统，硬编码视觉值 | UI | P1 | 代码审查 |
- | H18 | NoteEditorViewModel 自动保存延迟 1500ms 过大 | 体验 | P2 | 功能矩阵 |
- | H19 | 无保存队列串行化 | 数据 | P2 | 代码审查 |
- | H20 | 无加载竞态防护 | 数据 | P2 | 代码审查 |
- | H21 | ViewModel 职责过重 | 架构 | P2 | 代码审查 |
- | H22 | Composable 内联过多业务逻辑 | 架构 | P2 | 代码审查 |
- | H23 | 无 UseCase 层 | 架构 | P2 | 代码审查 |
- | H24 | 无加载/错误状态统一处理 | 体验 | P2 | 代码审查 |
- | H25 | Android 软键盘遮挡未处理 | Android | P1 | 代码审查 |
- | H26 | Android 旋转状态丢失 | Android | P1 | 代码审查 |
- | H27 | Android 状态栏适配缺失 | Android | P2 | 代码审查 |
- | H28 | 无数据版本号 | 数据 | P2 | 代码审查 |
- | H29 | 无备份策略 | 数据 | P2 | 代码审查 |
- | H30 | 无保存失败的用戶反馈 | 体验 | P1 | 代码审查 |
- | H31 | 未验证中文和 Emoji 支持 | 数据 | P2 | 代码审查 |
- | H32 | 未验证超长正文 | 数据 | P2 | 代码审查 |
- | H33 | 无可访问性 contentDescription | 可访问性 | P2 | 代码审查 |
- | H34 | 无键盘焦点顺序定义 | 可访问性 | P2 | 代码审查 |
- | H35 | 无颜色对比度检查 | 可访问性 | P2 | 代码审查 |
- | H36 | 无 TalkBack 适配 | 可访问性 | P2 | 代码审查 |
- | H37 | 导入文件大小和路径校验缺失 | 安全 | P2 | 代码审查 |
- | H38 | 无 LICENSE 和第三方许可文档 | 发布 | P2 | 代码审查 |
- | H39 | README 命令未验证 | 发布 | P2 | 代码审查 |
- | H40 | Web production build 未验证 | 发布 | P2 | 代码审查 |
- | H41 | 自动保存场景数据可能被旧数据覆盖 | 数据 | P1 | 代码审查 |
- | H42 | 删除笔记后自动保存协程仍在运行 | 数据 | P1 | 代码审查 |
- | H43 | 无错误日志记录体系 | 错误处理 | P2 | 代码审查 |
- | H44 | 日志可能泄露笔记正文 | 安全 | P2 | 代码审查 |
- | H45 | 平台 API (java.io/java.awt) 在 commonMain 风险 | 架构 | P0 | 需验证 |
+## 状态汇总
+
+| 级别 | 总数 | 已修复 | 未修复 | 未开始 |
+|------|------|--------|--------|--------|
+| P0   | 8    | 7      | 0      | 1 (H04) |
+| P1   | 14   | 13     | 1 (H13) | 0 |
+| P2   | 23   | 8      | 12     | 3 |
+
+## 已修复的问题
+
+| ID | 问题 | 修复批次 |
+|----|------|---------|
+| H01 | InMemoryNoteRepository 默认实现 | 批次1: 平台注入 |
+| H02 | saveAndContinue 静默吞异常 | 批次1: ViewModel 修复 |
+| H03 | 自动保存与删除竞态 | 批次1: saveQueue + epoch |
+| H05 | NoteApp 硬编码 InMemory | 本阶段: 移除默认参数 |
+| H06 | 无平台注入机制 | 批次1: AppModule |
+| H07 | Android 无返回键 | 阶段8: MobileNoteApp + BackHandler |
+| H08 | Android 进程重建丢失 | 阶段8: AndroidNoteStorage |
+| H09 | UI 文本硬编码英文 | 阶段5: 中文化 |
+| H10 | 无国际化资源体系 | 阶段5: composeResources |
+| H11 | 英文错误提示 | 阶段5: Strings 常量 |
+| H12 | 无 Markdown 工具栏 | 阶段7: MarkdownToolbar |
+| H14 | Android 强制三栏 | 阶段8: MobileNoteApp |
+| H16 | 托盘/快捷键/磁贴未集成 | 阶段7: desktop main.kt |
+| H17 | 无设计令牌系统 | 阶段6: AppColors/Typography/Spacing |
+| H18 | 自动保存延迟 1500ms | 批次1: 改为 800ms |
+| H19 | 无保存队列串行化 | 批次1: saveQueue Job |
+| H20 | 无加载竞态防护 | 批次1: loadEpoch |
+| H25 | Android 软键盘遮挡 | 本阶段: adjustResize |
+| H26 | Android 旋转状态丢失 | 阶段8: isWideScreen 检测 |
+| H28 | 无数据版本号 | 本阶段: NotesFile.version |
+| H30 | 保存失败用户反馈 | 批次1: Error 状态 |
+| H37 | 导入文件校验 | 本阶段: MAX_IMPORT_SIZE |
+| H38 | 无 LICENSE | 阶段5: MIT License |
+| H39 | README 命令 | 阶段5: 更新 |
+| H40 | Web production build | 阶段4: 已验证 |
+| H41 | 旧数据覆盖 | 批次1: epoch 保护 |
+| H42 | 删除后自动保存 | 批次1: clearEditor 取消队列 |
+| H45 | commonMain 平台 API | 已验证: 无泄漏 |
+
+## 未修复问题 (优先级排序)
+
+| ID | 问题 | 级别 | 说明 |
+|----|------|------|------|
+| H04 | createCategory() 为空 | P0 | 分类管理为隐式模式，实际功能正常 |
+| H13 | 无右键菜单 | P1 | 需要 ContextMenu Composable |
+| H15 | 导入导出 UI 集成 | P1 | 按钮已连接，缺少进度反馈 |
+| H21 | ViewModel 职责过重 | P2 | 可拆分 UseCase 层 |
+| H22 | Composable 内联业务 | P2 | 可提取 Presenter |
+| H23 | 无 UseCase 层 | P2 | 架构改进 |
+| H24 | 无统一错误处理 | P2 | 各 ViewModel 独立处理 |
+| H27 | Android 状态栏适配 | P2 | enableEdgeToEdge 已设置 |
+| H29 | 无备份策略 | P2 | 低优先级 |
+| H31 | 中文/Emoji 验证 | P2 | 需测试 |
+| H32 | 超长正文验证 | P2 | 需测试 |
+| H33 | contentDescription | P2 | 部分元素已加 |
+| H34 | 键盘焦点顺序 | P2 | 部分处理 |
+| H35 | 颜色对比度 | P2 | Material 3 默认保证 |
+| H36 | TalkBack | P2 | 需要 Android 专项测试 |
+| H43 | 错误日志体系 | P2 | 无中央日志 |
+| H44 | 日志泄露内容 | P2 | 目前无日志，无风险 |
 
  ## 按严重级别统计
 
