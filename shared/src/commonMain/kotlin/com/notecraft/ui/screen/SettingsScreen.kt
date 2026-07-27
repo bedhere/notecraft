@@ -1,4 +1,4 @@
-package com.notecraft.ui.screen
+﻿package com.notecraft.ui.screen
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import com.notecraft.domain.model.AppConfig
 import com.notecraft.presentation.settings.SettingsState
 import com.notecraft.util.Strings
+import com.notecraft.ui.theme.AppSpacing
 
 @Composable
 fun SettingsContent(
@@ -28,17 +29,17 @@ fun SettingsContent(
 
     Column(
         modifier = modifier
-            .padding(16.dp)
+            .padding(AppSpacing.xl)
             .verticalScroll(rememberScrollState())
     ) {
         Text(Strings.settings, style = MaterialTheme.typography.headlineSmall,
-            modifier = Modifier.padding(bottom = 16.dp))
+            modifier = Modifier.padding(bottom = AppSpacing.xl))
 
         SettingsSection(Strings.appearance)
 
         Text(Strings.theme, style = MaterialTheme.typography.labelMedium,
-            modifier = Modifier.padding(top = 8.dp, bottom = 4.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            modifier = Modifier.padding(top = AppSpacing.md, bottom = AppSpacing.sm))
+        Row(horizontalArrangement = Arrangement.spacedBy(AppSpacing.md)) {
             val themeOptions = listOf(
                 Triple("light", Strings.themeLight, Strings.themeLight),
                 Triple("dark", Strings.themeDark, Strings.themeDark),
@@ -53,7 +54,7 @@ fun SettingsContent(
             }
         }
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(AppSpacing.lg))
         Text(Strings.fontSize + ": " + config.fontSize, style = MaterialTheme.typography.labelMedium)
         Slider(
             value = config.fontSize.toFloat(),
@@ -64,12 +65,12 @@ fun SettingsContent(
         )
 
         // Editor section
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(AppSpacing.xl))
         SettingsSection(Strings.editorSection)
 
         Text(Strings.tabIndent + ": " + config.tabIndentSize,
             style = MaterialTheme.typography.labelMedium,
-            modifier = Modifier.padding(top = 8.dp, bottom = 4.dp))
+            modifier = Modifier.padding(top = AppSpacing.md, bottom = AppSpacing.sm))
         Slider(
             value = config.tabIndentSize.toFloat(),
             onValueChange = { onTabIndentChange(it.toInt()) },
@@ -78,7 +79,7 @@ fun SettingsContent(
             modifier = Modifier.fillMaxWidth()
         )
 
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(AppSpacing.md))
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -91,14 +92,14 @@ fun SettingsContent(
             )
         }
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(AppSpacing.xl))
         SettingsSection(Strings.aboutSection)
         Text(Strings.appName, style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.padding(top = 4.dp))
+            modifier = Modifier.padding(top = AppSpacing.sm))
         Text(Strings.version, style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(AppSpacing.xxxl))
     }
 }
 
@@ -109,6 +110,6 @@ private fun SettingsSection(title: String) {
         style = MaterialTheme.typography.labelSmall,
         fontWeight = FontWeight.Bold,
         color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(vertical = 4.dp)
+        modifier = Modifier.padding(vertical = AppSpacing.sm)
     )
 }

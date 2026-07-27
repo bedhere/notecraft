@@ -1,4 +1,4 @@
-package com.notecraft.ui.screen
+﻿package com.notecraft.ui.screen
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -33,6 +33,7 @@ import com.notecraft.presentation.note.*
 import com.notecraft.presentation.settings.SettingsViewModel
 import com.notecraft.ui.markdown.MarkdownContent
 import com.notecraft.ui.theme.NotecraftTheme
+import com.notecraft.ui.theme.AppSpacing
 import com.notecraft.util.Strings
 import com.notecraft.util.NoteUtils
 import kotlinx.coroutines.launch
@@ -90,7 +91,8 @@ fun NoteApp(
         else -> androidx.compose.foundation.isSystemInDarkTheme()
     }
 
-    NotecraftTheme(darkTheme = isDarkTheme) {
+    val currentFontSize = settingsState.config.fontSize
+    NotecraftTheme(darkTheme = isDarkTheme, fontSize = currentFontSize) {
         Surface(modifier = Modifier.fillMaxSize()) {
             Box(
                 modifier = Modifier.fillMaxSize().onKeyEvent { event ->
@@ -110,7 +112,7 @@ fun NoteApp(
                         onSettingsClick = { settingsViewModel.toggleOpen() },
                         onImport = { if (importExport != null) scope.launch { importExport.importMarkdownFile(); listViewModel.loadAll() } },
                         onExport = { val nid = listState.selectedNoteId; if (nid != null && importExport != null) scope.launch { importExport.exportMarkdownFile(nid) } },
-                        modifier = Modifier.width(260.dp).fillMaxHeight()
+                        modifier = Modifier.width(AppSpacing.sidebarWidth).fillMaxHeight()
                     )
                     VerticalDivider()
                     if (settingsState.isOpen) {
@@ -157,13 +159,13 @@ fun NoteListPanel(
         mutableStateOf(state.filteredNotes.indexOfFirst { it.id == state.selectedNoteId }.coerceAtLeast(0))
     }
 
-    Column(modifier = modifier.padding(8.dp)) {
+    Column(modifier = modifier.padding(AppSpacing.md)) {
         Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically) {
             Text(Strings.noteListTitle(state.filteredNotes.size),
                 style = MaterialTheme.typography.titleMedium)
-            IconButton(onClick = onSettingsClick, modifier = Modifier.size(28.dp)) {
+            IconButton(onClick = onSettingsClick, modifier = Modifier.size(AppSpacing.iconButtonSmall)) {
                 Text("...", fontSize = 14.sp)
             }
         }
@@ -171,7 +173,7 @@ fun NoteListPanel(
             value = state.searchQuery, onValueChange = onSearchQueryChange,
             placeholder = { Text(Strings.searchNotes, style = MaterialTheme.typography.bodySmall) },
             singleLine = true,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp).height(46.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp).height(AppSpacing.searchFieldHeight),
             textStyle = MaterialTheme.typography.bodySmall,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search)
         )
@@ -187,7 +189,7 @@ fun NoteListPanel(
                 Text(Strings.exportAction, style = MaterialTheme.typography.labelSmall)
             }
         }
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(AppSpacing.sm))
         Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
             TextButton(onClick = { onSortModeChange(SortMode.RECENTLY_UPDATED) },
                 contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)) {
@@ -228,7 +230,7 @@ fun NoteListPanel(
                 item {
                     val emptyMsg = if (state.searchQuery.isNotBlank()) Strings.noResultsFor(state.searchQuery) else Strings.noNotesYet
                     Text(emptyMsg, style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(16.dp))
+                        color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(AppSpacing.editorPadding))
                 }
             }
             for (group in state.filteredGroups) {
@@ -252,8 +254,8 @@ fun NoteListPanel(
                             verticalAlignment = Alignment.CenterVertically) {
                             Text(text = title, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
                             TextButton(onClick = { onDeleteNote(note.id) },
-                                contentPadding = PaddingValues(horizontal = 4.dp), modifier = Modifier.size(28.dp)) {
-                                Text("×", fontSize = 14.sp)
+                                contentPadding = PaddingValues(horizontal = 4.dp), modifier = Modifier.size(AppSpacing.iconButtonSmall)) {
+                                Text("脳", fontSize = 14.sp)
                             }
                         }
                     }
@@ -276,7 +278,7 @@ fun EditorPanel(
 ) {
     val focusManager = LocalFocusManager.current
 
-    Column(modifier = modifier.padding(16.dp)) {
+    Column(modifier = modifier.padding(AppSpacing.editorPadding)) {
         if (state.noteId == null) {
             Text(Strings.selectNoteHint,
                 style = MaterialTheme.typography.bodyLarge,
@@ -296,7 +298,7 @@ fun EditorPanel(
             }
             Text(saveText, style = MaterialTheme.typography.labelSmall)
             Spacer(Modifier.weight(1f))
-            SingleChoiceSegmentedButtonRow(modifier = Modifier.width(180.dp)) {
+            SingleChoiceSegmentedButtonRow(modifier = Modifier.width(AppSpacing.segmentedButtonWidth)) {
                 ViewMode.entries.forEachIndexed { idx, mode ->
                     SegmentedButton(
                         shape = SegmentedButtonDefaults.itemShape(index = idx, count = ViewMode.entries.size),
@@ -309,28 +311,28 @@ fun EditorPanel(
                     }
                 }
             }
-            Spacer(Modifier.width(4.dp))
+            Spacer(Modifier.width(AppSpacing.sm))
             onToggleTile?.let { toggle ->
-                IconButton(onClick = { toggle(state.noteId!!) }, modifier = Modifier.size(32.dp)) {
+                IconButton(onClick = { toggle(state.noteId!!) }, modifier = Modifier.size(AppSpacing.iconButtonMedium)) {
                     Text(Strings.pin, fontSize = 10.sp)
                 }
             }
-            Spacer(Modifier.width(4.dp))
+            Spacer(Modifier.width(AppSpacing.sm))
             Text(Strings.words(state.wordCount), style = MaterialTheme.typography.labelSmall)
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(AppSpacing.md))
             Button(onClick = onSave, enabled = state.saveState is SaveState.Dirty,
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)) {
                 Text(Strings.save, style = MaterialTheme.typography.labelMedium)
             }
         }
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(AppSpacing.md))
         when (state.viewMode) {
             ViewMode.EDIT -> {
                 EditorFields(state, onTitleChange, onContentChange, titleFocusRequester, focusManager)
             }
             ViewMode.PREVIEW -> {
                 Column(modifier = Modifier.fillMaxSize()) {
-                    Text(state.title, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(bottom = 12.dp))
+                    Text(state.title, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(bottom = AppSpacing.lg))
                     MarkdownContent(content = state.content, fontSize = 14, modifier = Modifier.fillMaxSize())
                 }
             }
@@ -341,20 +343,20 @@ fun EditorPanel(
                             label = { Text(Strings.editorTitle) }, singleLine = true,
                             modifier = Modifier.fillMaxWidth().focusRequester(titleFocusRequester),
                             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next))
-                        Spacer(Modifier.height(8.dp))
+                        Spacer(Modifier.height(AppSpacing.md))
                         OutlinedTextField(value = state.content, onValueChange = onContentChange,
                             label = { Text(Strings.editorContent) },
                             modifier = Modifier.fillMaxSize(),
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text))
                     }
                     VerticalDivider(modifier = Modifier.fillMaxHeight())
-                    Column(modifier = Modifier.weight(1f).fillMaxHeight().padding(start = 8.dp)) {
+                    Column(modifier = Modifier.weight(1f).fillMaxHeight().padding(start = AppSpacing.md)) {
                         MarkdownContent(content = state.content, fontSize = 14, modifier = Modifier.fillMaxSize())
                     }
                 }
             }
         }
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(AppSpacing.md))
     }
 }
 
@@ -373,7 +375,7 @@ private fun ColumnScope.EditorFields(
             if (event.type == KeyEventType.KeyUp && event.key == Key.Tab) { focusManager.clearFocus(); true } else false
         },
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next))
-    Spacer(Modifier.height(12.dp))
+    Spacer(Modifier.height(AppSpacing.lg))
     OutlinedTextField(value = state.content, onValueChange = onContentChange,
         label = { Text(Strings.editorContent) },
         modifier = Modifier.fillMaxWidth().weight(1f),
