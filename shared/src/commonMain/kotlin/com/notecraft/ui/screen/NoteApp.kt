@@ -35,6 +35,7 @@ import com.notecraft.ui.markdown.MarkdownContent
 import com.notecraft.ui.theme.NotecraftTheme
 import com.notecraft.ui.theme.AppSpacing
 import com.notecraft.util.Strings
+import com.notecraft.util.TimeFormat
 import com.notecraft.util.NoteUtils
 import kotlinx.coroutines.launch
 
@@ -241,21 +242,44 @@ fun NoteListPanel(
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp))
                 }
                 items(group.notes, key = { it.id }) { note ->
-                    val title = if (note.title.isNotBlank()) note.title else (note.preview.take(20).ifEmpty { "untitled" })
                     val isSelected = note.id == state.selectedNoteId
+                    val displayTitle = if (note.title.isNotBlank()) note.title else Strings.untitled
+                    val previewText = if (note.title.isNotBlank()) note.preview else ""
                     Surface(
                         color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
                         shape = MaterialTheme.shapes.small,
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 1.dp)
                             .clickable { selectedIdx = state.filteredNotes.indexOf(note); onSelectNote(note.id) }
                     ) {
-                        Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically) {
-                            Text(text = title, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-                            TextButton(onClick = { onDeleteNote(note.id) },
-                                contentPadding = PaddingValues(horizontal = 4.dp), modifier = Modifier.size(AppSpacing.iconButtonSmall)) {
-                                Text("脳", fontSize = 14.sp)
+                        Column(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = displayTitle,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
+                                    modifier = Modifier.weight(1f),
+                                    maxLines = 1
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Text(
+                                    text = TimeFormat.relativeTime(note.updatedAt),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            if (previewText.isNotBlank()) {
+                                Text(
+                                    text = previewText,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                    maxLines = 1
+                                )
                             }
                         }
                     }
@@ -339,6 +363,10 @@ fun EditorPanel(
             ViewMode.SPLIT -> {
                 Row(modifier = Modifier.fillMaxSize()) {
                     Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                        MarkdownToolbar(
+                            content = state.content,
+                            onContentChange = onContentChange
+                        )
                         OutlinedTextField(value = state.title, onValueChange = onTitleChange,
                             label = { Text(Strings.editorTitle) }, singleLine = true,
                             modifier = Modifier.fillMaxWidth().focusRequester(titleFocusRequester),
@@ -369,6 +397,10 @@ private fun ColumnScope.EditorFields(
     titleFocusRequester: FocusRequester,
     focusManager: androidx.compose.ui.focus.FocusManager
 ) {
+    MarkdownToolbar(
+        content = state.content,
+        onContentChange = onContentChange
+    )
     OutlinedTextField(value = state.title, onValueChange = onTitleChange,
         label = { Text(Strings.editorTitle) }, singleLine = true,
         modifier = Modifier.fillMaxWidth().focusRequester(titleFocusRequester).onKeyEvent { event ->
@@ -376,8 +408,43 @@ private fun ColumnScope.EditorFields(
         },
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next))
     Spacer(Modifier.height(AppSpacing.lg))
+    MarkdownToolbar(
+        content = state.content,
+        onContentChange = onContentChange
+    )
     OutlinedTextField(value = state.content, onValueChange = onContentChange,
         label = { Text(Strings.editorContent) },
         modifier = Modifier.fillMaxWidth().weight(1f),
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text))
+}
+
+@Composable
+private fun MarkdownToolbar(
+    content: String,
+    onContentChange: (String) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+        horizontalArrangement = Arrangement.Start
+    ) {
+        val buttons = listOf(
+            "B" to { "**" + content + "**" },
+            "I" to { "*" + content + "*" },
+            "H" to { "# " + content },
+            "—" to { content + "\n---\n" },
+            "•" to { content + "\n- " },
+            "1." to { content + "\n1. " },
+            "<>" to { "```\n" + content + "\n```" },
+            "❝" to { content + "\n> " }
+        )
+        buttons.forEach { (label, transform) ->
+            TextButton(
+                onClick = { onContentChange(transform()) },
+                modifier = Modifier.height(30.dp),
+                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp)
+            ) {
+                Text(label, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+    }
 }
