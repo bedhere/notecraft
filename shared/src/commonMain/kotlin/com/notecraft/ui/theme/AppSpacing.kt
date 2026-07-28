@@ -21,7 +21,7 @@ object AppSpacing {
     val listItemHorizontal = 8.dp
     val listItemVertical = 5.dp
     val editorPadding = 16.dp
-    val sidebarWidth = 260.dp
+    val sidebarWidth = 320.dp
     val settingsWidth = 300.dp
     val titleBarHeight = 54.dp
     val editorHeaderHeight = 54.dp

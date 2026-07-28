@@ -1,9 +1,15 @@
 ﻿package com.notecraft.ui.screen
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -12,9 +18,11 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -30,6 +38,8 @@ import com.notecraft.presentation.note.*
 import com.notecraft.presentation.settings.SettingsViewModel
 import com.notecraft.ui.markdown.MarkdownContent
 import com.notecraft.ui.theme.NotecraftTheme
+import com.notecraft.ui.theme.AppComponentDefaults
+import com.notecraft.ui.theme.AppShapes
 import com.notecraft.ui.theme.AppSpacing
 import com.notecraft.util.Strings
 import com.notecraft.util.TimeFormat
@@ -167,139 +177,335 @@ fun NoteListPanel(
         mutableStateOf(state.filteredNotes.indexOfFirst { it.id == state.selectedNoteId }.coerceAtLeast(0))
     }
 
-    Column(modifier = modifier.padding(AppSpacing.md)) {
-        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically) {
-            Column {
-                Text(Strings.appBrandName, style = MaterialTheme.typography.titleMedium)
+    Surface(modifier = modifier, color = MaterialTheme.colorScheme.surfaceVariant) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(horizontal = AppSpacing.lg, vertical = AppSpacing.md)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = AppSpacing.sm),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = Strings.appBrandName,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = Strings.notesCount(state.notes.size),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                IconButton(
+                    onClick = onSettingsClick,
+                    modifier = Modifier.size(AppSpacing.iconButtonSmall)
+                ) {
+                    Text(
+                        text = "...",
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            OutlinedTextField(
+                value = state.searchQuery,
+                onValueChange = onSearchQueryChange,
+                placeholder = { Text(Strings.searchNotes, style = MaterialTheme.typography.bodySmall) },
+                singleLine = true,
+                shape = AppShapes.control,
+                modifier = Modifier.fillMaxWidth().height(AppSpacing.searchFieldHeight),
+                textStyle = MaterialTheme.typography.bodySmall,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                trailingIcon = if (state.searchQuery.isNotBlank()) {
+                    {
+                        IconButton(
+                            onClick = { onSearchQueryChange("") },
+                            modifier = Modifier.size(AppSpacing.iconButtonSmall)
+                        ) {
+                            Text("x", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                } else {
+                    null
+                }
+            )
+
+            Spacer(Modifier.height(AppSpacing.sm))
+            SidebarAction(
+                icon = "+",
+                text = Strings.newNote,
+                onClick = onCreateNote,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Row(modifier = Modifier.fillMaxWidth()) {
+                SidebarAction(
+                    icon = "v",
+                    text = Strings.importAction,
+                    onClick = onImport,
+                    modifier = Modifier.weight(1f)
+                )
+                SidebarAction(
+                    icon = "^",
+                    text = Strings.exportAction,
+                    onClick = onExport,
+                    modifier = Modifier.weight(1f),
+                    enabled = state.selectedNoteId != null
+                )
+            }
+
+            Spacer(Modifier.height(AppSpacing.sm))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Text(
-                    Strings.notesCount(state.notes.size),
+                    text = Strings.notesCount(state.filteredNotes.size),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f)
+                )
+                TextButton(
+                    onClick = { onSortModeChange(SortMode.RECENTLY_UPDATED) },
+                    contentPadding = AppComponentDefaults.toolbarPadding
+                ) {
+                    Text(
+                        text = Strings.recent,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = if (state.sortMode == SortMode.RECENTLY_UPDATED) {
+                            FontWeight.Bold
+                        } else {
+                            FontWeight.Normal
+                        }
+                    )
+                }
+                TextButton(
+                    onClick = { onSortModeChange(SortMode.TITLE) },
+                    contentPadding = AppComponentDefaults.toolbarPadding
+                ) {
+                    Text(
+                        text = Strings.sortByTitle,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = if (state.sortMode == SortMode.TITLE) {
+                            FontWeight.Bold
+                        } else {
+                            FontWeight.Normal
+                        }
+                    )
+                }
+            }
+
+            if (state.isLoading) {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth().height(2.dp))
+            }
+            state.error?.let { err ->
+                Text(
+                    text = err,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(vertical = AppSpacing.sm)
+                )
+            }
+
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .onKeyEvent { event ->
+                        when {
+                            event.type == KeyEventType.KeyDown && event.key == Key.DirectionDown -> {
+                                val next = (selectedIdx + 1).coerceAtMost(state.filteredNotes.size - 1)
+                                if (next >= 0 && next < state.filteredNotes.size) {
+                                    selectedIdx = next
+                                    onSelectNote(state.filteredNotes[next].id)
+                                }
+                                true
+                            }
+                            event.type == KeyEventType.KeyDown && event.key == Key.DirectionUp -> {
+                                val prev = (selectedIdx - 1).coerceAtLeast(0)
+                                if (prev < state.filteredNotes.size) {
+                                    selectedIdx = prev
+                                    onSelectNote(state.filteredNotes[prev].id)
+                                }
+                                true
+                            }
+                            event.type == KeyEventType.KeyUp && event.key == Key.Enter -> {
+                                if (selectedIdx in state.filteredNotes.indices) {
+                                    onSelectNote(state.filteredNotes[selectedIdx].id)
+                                }
+                                true
+                            }
+                            else -> false
+                        }
+                    },
+                contentPadding = PaddingValues(vertical = AppSpacing.sm),
+                verticalArrangement = Arrangement.spacedBy(AppSpacing.xs)
+            ) {
+                if (state.filteredNotes.isEmpty()) {
+                    item {
+                        val emptyMsg = if (state.searchQuery.isNotBlank()) {
+                            Strings.noResultsFor(state.searchQuery)
+                        } else {
+                            Strings.noNotesYet
+                        }
+                        Text(
+                            text = emptyMsg,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(AppSpacing.lg)
+                        )
+                    }
+                }
+                for (group in state.filteredGroups) {
+                    val label = group.category.ifEmpty { Strings.uncategorized }
+                    item(key = "cat_" + group.category) {
+                        Text(
+                            text = label.uppercase(),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(top = AppSpacing.sm, bottom = AppSpacing.xs)
+                        )
+                    }
+                    items(group.notes, key = { it.id }) { note ->
+                        NoteListItem(
+                            note = note,
+                            isSelected = note.id == state.selectedNoteId,
+                            onClick = {
+                                selectedIdx = state.filteredNotes.indexOfFirst { it.id == note.id }
+                                onSelectNote(note.id)
+                            }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SidebarAction(
+    icon: String,
+    text: String,
+    onClick: () -> Unit,
+    enabled: Boolean = true,
+    modifier: Modifier = Modifier
+) {
+    TextButton(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = modifier,
+        shape = AppShapes.control,
+        contentPadding = AppComponentDefaults.compactPadding
+    ) {
+        Text(
+            text = icon,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Spacer(Modifier.width(AppSpacing.sm))
+        Text(text = text, style = MaterialTheme.typography.labelLarge)
+    }
+}
+
+@Composable
+private fun NoteListItem(
+    note: com.notecraft.domain.model.NoteMetadata,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    val interactionSource = remember(note.id) { MutableInteractionSource() }
+    val isHovered by interactionSource.collectIsHoveredAsState()
+    var isFocused by remember(note.id) { mutableStateOf(false) }
+    val displayTitle = note.title.ifBlank { Strings.untitled }
+    val itemColor = when {
+        isSelected -> MaterialTheme.colorScheme.primaryContainer
+        isHovered -> MaterialTheme.colorScheme.surfaceVariant
+        else -> MaterialTheme.colorScheme.surface
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 70.dp)
+            .background(itemColor, AppShapes.control)
+            .hoverable(interactionSource)
+            .focusable()
+            .onFocusChanged { isFocused = it.isFocused }
+            .border(
+                width = if (isFocused) 1.dp else 0.dp,
+                color = if (isFocused) MaterialTheme.colorScheme.primary else itemColor,
+                shape = AppShapes.control
+            )
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick
+            )
+            .padding(end = AppSpacing.md),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .width(3.dp)
+                .height(54.dp)
+                .background(
+                    if (isSelected) MaterialTheme.colorScheme.primary else itemColor,
+                    AppShapes.compact
+                )
+        )
+        Column(
+            modifier = Modifier.padding(start = AppSpacing.md, top = AppSpacing.sm, bottom = AppSpacing.sm)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = displayTitle,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+                Spacer(Modifier.width(AppSpacing.sm))
+                Text(
+                    text = TimeFormat.relativeTime(note.updatedAt),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            IconButton(
-                onClick = onSettingsClick,
-                modifier = Modifier.size(AppSpacing.iconButtonSmall)
+            if (note.preview.isNotBlank()) {
+                Text(
+                    text = note.preview,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = AppSpacing.xs)
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = AppSpacing.xs),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("...", fontSize = 14.sp)
-            }
-        }
-        OutlinedTextField(
-            value = state.searchQuery, onValueChange = onSearchQueryChange,
-            placeholder = { Text(Strings.searchNotes, style = MaterialTheme.typography.bodySmall) },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp).height(AppSpacing.searchFieldHeight),
-            textStyle = MaterialTheme.typography.bodySmall,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search)
-        )
-        Button(onClick = onCreateNote, modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
-            Text(Strings.newNote)
-        }
-        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 2.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly) {
-            TextButton(onClick = onImport, contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)) {
-                Text(Strings.importAction, style = MaterialTheme.typography.labelSmall)
-            }
-            TextButton(onClick = onExport, contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)) {
-                Text(Strings.exportAction, style = MaterialTheme.typography.labelSmall)
-            }
-        }
-        Spacer(Modifier.height(AppSpacing.sm))
-        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
-            TextButton(onClick = { onSortModeChange(SortMode.RECENTLY_UPDATED) },
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)) {
-                Text(Strings.recent, fontSize = 11.sp,
-                    fontWeight = if (state.sortMode == SortMode.RECENTLY_UPDATED) FontWeight.Bold else FontWeight.Normal)
-            }
-            TextButton(onClick = { onSortModeChange(SortMode.TITLE) },
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)) {
-                Text(Strings.sortByTitle, fontSize = 11.sp,
-                    fontWeight = if (state.sortMode == SortMode.TITLE) FontWeight.Bold else FontWeight.Normal)
-            }
-        }
-        if (state.isLoading) {
-            CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
-        }
-        state.error?.let { err ->
-            Text(err, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-        }
-        LazyColumn(
-            modifier = Modifier.weight(1f).onKeyEvent { event ->
-                when {
-                    event.type == KeyEventType.KeyDown && event.key == Key.DirectionDown -> {
-                        val next = (selectedIdx + 1).coerceAtMost(state.filteredNotes.size - 1)
-                        if (next >= 0 && next < state.filteredNotes.size) { selectedIdx = next; onSelectNote(state.filteredNotes[next].id) }; true
-                    }
-                    event.type == KeyEventType.KeyDown && event.key == Key.DirectionUp -> {
-                        val prev = (selectedIdx - 1).coerceAtLeast(0)
-                        if (prev < state.filteredNotes.size) { selectedIdx = prev; onSelectNote(state.filteredNotes[prev].id) }; true
-                    }
-                    event.type == KeyEventType.KeyUp && event.key == Key.Enter -> {
-                        if (selectedIdx in state.filteredNotes.indices) { onSelectNote(state.filteredNotes[selectedIdx].id) }; true
-                    }
-                    else -> false
-                }
-            }
-        ) {
-            if (state.filteredNotes.isEmpty()) {
-                item {
-                    val emptyMsg = if (state.searchQuery.isNotBlank()) Strings.noResultsFor(state.searchQuery) else Strings.noNotesYet
-                    Text(emptyMsg, style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(AppSpacing.editorPadding))
-                }
-            }
-            for (group in state.filteredGroups) {
-                val label = group.category.ifEmpty { Strings.uncategorized }
-                item(key = "cat_" + group.category) {
-                    Text(label.uppercase(), style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp))
-                }
-                items(group.notes, key = { it.id }) { note ->
-                    val isSelected = note.id == state.selectedNoteId
-                    val displayTitle = if (note.title.isNotBlank()) note.title else Strings.untitled
-                    val previewText = if (note.title.isNotBlank()) note.preview else ""
-                    Surface(
-                        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
-                        shape = MaterialTheme.shapes.small,
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 1.dp)
-                            .clickable { selectedIdx = state.filteredNotes.indexOf(note); onSelectNote(note.id) }
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = displayTitle,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
-                                    modifier = Modifier.weight(1f),
-                                    maxLines = 1
-                                )
-                                Spacer(Modifier.width(4.dp))
-                                Text(
-                                    text = TimeFormat.relativeTime(note.updatedAt),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            if (previewText.isNotBlank()) {
-                                Text(
-                                    text = previewText,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                                    maxLines = 1
-                                )
-                            }
-                        }
-                    }
-                }
+                Text(
+                    text = TimeFormat.formatDateTime(note.updatedAt),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+                Spacer(Modifier.width(AppSpacing.sm))
+                Text(
+                    text = Strings.words(note.wordCount),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                )
             }
         }
     }
