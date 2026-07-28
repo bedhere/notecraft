@@ -1,18 +1,16 @@
 package com.notecraft.ui.markdown
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.ClickableText
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -28,15 +26,27 @@ import androidx.compose.ui.unit.sp
 fun MarkdownContent(
     content: String,
     fontSize: Int = 14,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    scrollState: ScrollState = rememberScrollState(),
+    emptyMessage: String = "Preview will appear here"
 ) {
-    val blocks = remember(content) { MarkdownParser.parse(content) }
+    val blocks = remember(content) {
+        if (content.isBlank()) emptyList() else MarkdownParser.parse(content)
+    }
     val primaryColor = MaterialTheme.colorScheme.primary
-    val surfaceColor = MaterialTheme.colorScheme.surfaceVariant
     val textColor = MaterialTheme.colorScheme.onSurface
     val codeBg = MaterialTheme.colorScheme.surfaceVariant
 
-    Column(modifier = modifier.verticalScroll(rememberScrollState()).padding(8.dp)) {
+    Column(modifier = modifier.verticalScroll(scrollState).padding(8.dp)) {
+        if (blocks.isEmpty()) {
+            Text(
+                text = emptyMessage,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+            return@Column
+        }
         for (block in blocks) {
             when (block) {
                 is MdBlock.Heading -> {

@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -557,6 +558,7 @@ fun EditorPanel(
     modifier: Modifier = Modifier
 ) {
     val focusManager = LocalFocusManager.current
+    val previewScrollState = remember(state.noteId) { ScrollState(0) }
     var contentValue by remember(state.noteId) {
         mutableStateOf(TextFieldValue(state.content))
     }
@@ -598,47 +600,90 @@ fun EditorPanel(
         EditorNoteHeader(state = state)
         HorizontalDivider(modifier = Modifier.padding(top = AppSpacing.sm))
         Spacer(Modifier.height(AppSpacing.md))
-        when (state.viewMode) {
-            ViewMode.EDIT -> {
-                EditorFields(
-                    state = state,
-                    contentValue = contentValue,
-                    onContentValueChange = onContentValueChange,
-                    onTitleChange = onTitleChange,
-                    titleFocusRequester = titleFocusRequester,
-                    focusManager = focusManager
-                )
-            }
-            ViewMode.PREVIEW -> {
-                Column(modifier = Modifier.fillMaxSize()) {
-                    MarkdownContent(content = state.content, fontSize = 14, modifier = Modifier.fillMaxSize())
-                }
-            }
-            ViewMode.SPLIT -> {
-                Row(modifier = Modifier.fillMaxSize()) {
-                    Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
-                        OutlinedTextField(value = state.title, onValueChange = onTitleChange,
-                            label = { Text(Strings.editorTitle) }, singleLine = true,
-                            modifier = Modifier.fillMaxWidth().focusRequester(titleFocusRequester),
-                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next))
-                        Spacer(Modifier.height(AppSpacing.md))
-                        MarkdownToolbar(
-                            value = contentValue,
-                            onValueChange = onContentValueChange
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth().weight(1f)) {
+            when (state.viewMode) {
+                ViewMode.EDIT -> {
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        EditorFields(
+                            state = state,
+                            contentValue = contentValue,
+                            onContentValueChange = onContentValueChange,
+                            onTitleChange = onTitleChange,
+                            titleFocusRequester = titleFocusRequester,
+                            focusManager = focusManager
                         )
-                        OutlinedTextField(value = contentValue, onValueChange = onContentValueChange,
-                            label = { Text(Strings.editorContent) },
-                            modifier = Modifier.fillMaxWidth().weight(1f),
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text))
                     }
-                    VerticalDivider(modifier = Modifier.fillMaxHeight())
-                    Column(modifier = Modifier.weight(1f).fillMaxHeight().padding(start = AppSpacing.md)) {
-                        MarkdownContent(content = state.content, fontSize = 14, modifier = Modifier.fillMaxSize())
+                }
+                ViewMode.PREVIEW -> {
+                    PreviewPane(
+                        content = state.content,
+                        scrollState = previewScrollState,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+                ViewMode.SPLIT -> {
+                    if (maxWidth < AppSpacing.splitCollapseWidth) {
+                        Column(modifier = Modifier.fillMaxSize()) {
+                            EditorMarkdownBody(
+                                contentValue = contentValue,
+                                onContentValueChange = onContentValueChange,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                    } else {
+                        Row(modifier = Modifier.fillMaxSize()) {
+                            EditorMarkdownBody(
+                                contentValue = contentValue,
+                                onContentValueChange = onContentValueChange,
+                                modifier = Modifier.weight(1.08f).fillMaxHeight()
+                            )
+                            VerticalDivider(
+                                modifier = Modifier.fillMaxHeight().padding(horizontal = AppSpacing.xl),
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f)
+                            )
+                            PreviewPane(
+                                content = contentValue.text,
+                                scrollState = previewScrollState,
+                                showLabel = true,
+                                modifier = Modifier.weight(1f).fillMaxHeight()
+                            )
+                        }
                     }
                 }
             }
         }
         Spacer(Modifier.height(AppSpacing.md))
+    }
+}
+
+@Composable
+private fun PreviewPane(
+    content: String,
+    scrollState: ScrollState,
+    modifier: Modifier = Modifier,
+    showLabel: Boolean = false
+) {
+    Column(modifier = modifier.fillMaxSize()) {
+        if (showLabel) {
+            Text(
+                text = Strings.previewMode,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.62f),
+                modifier = Modifier.padding(start = AppSpacing.md, bottom = AppSpacing.sm)
+            )
+        }
+        Box(modifier = Modifier.fillMaxSize()) {
+            MarkdownContent(
+                content = content,
+                fontSize = 14,
+                scrollState = scrollState,
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .fillMaxWidth()
+                    .widthIn(max = AppSpacing.previewMaxWidth)
+                    .align(Alignment.TopStart)
+            )
+        }
     }
 }
 
@@ -868,14 +913,29 @@ private fun ColumnScope.EditorFields(
         },
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next))
     Spacer(Modifier.height(AppSpacing.lg))
-    MarkdownToolbar(
-        value = contentValue,
-        onValueChange = onContentValueChange
+    EditorMarkdownBody(
+        contentValue = contentValue,
+        onContentValueChange = onContentValueChange,
+        modifier = Modifier.fillMaxWidth().weight(1f)
     )
-    OutlinedTextField(value = contentValue, onValueChange = onContentValueChange,
-        label = { Text(Strings.editorContent) },
-        modifier = Modifier.fillMaxWidth().weight(1f),
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text))
+}
+
+@Composable
+private fun EditorMarkdownBody(
+    contentValue: TextFieldValue,
+    onContentValueChange: (TextFieldValue) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier) {
+        MarkdownToolbar(
+            value = contentValue,
+            onValueChange = onContentValueChange
+        )
+        OutlinedTextField(value = contentValue, onValueChange = onContentValueChange,
+            label = { Text(Strings.editorContent) },
+            modifier = Modifier.fillMaxWidth().weight(1f),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text))
+    }
 }
 
 @Composable

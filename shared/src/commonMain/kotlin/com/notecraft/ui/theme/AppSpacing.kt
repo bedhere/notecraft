@@ -32,5 +32,7 @@ object AppSpacing {
     val searchFieldHeight = 42.dp
     val iconButtonSmall = 28.dp
     val iconButtonMedium = 32.dp
+    val splitCollapseWidth = 760.dp
+    val previewMaxWidth = 960.dp
     val dividerHeight = 1.dp
 }
