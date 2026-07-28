@@ -64,7 +64,8 @@ import kotlinx.coroutines.launch
 fun NoteApp(
     noteRepository: NoteRepository,
     settingsRepository: SettingsRepository,
-    fileDialogService: FileDialogService? = null,
+    fileDialogService: FileDialogService? = null,
+
     settingsToggleSignal: androidx.compose.runtime.MutableState<Int>? = null,
     onToggleTile: ((String) -> Unit)? = null,
     onCurrentNoteTitleChange: (String?) -> Unit = {},
@@ -251,35 +252,7 @@ fun NoteListPanel(
         Column(
             modifier = Modifier.fillMaxSize().padding(horizontal = AppSpacing.lg, vertical = AppSpacing.md)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(vertical = AppSpacing.sm),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = Strings.appBrandName,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Text(
-                        text = Strings.notesCount(state.notes.size),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                IconButton(
-                    onClick = onSettingsClick,
-                    modifier = Modifier.size(AppSpacing.iconButtonSmall)
-                ) {
-                    Text(
-                        text = "...",
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-
+            // Search field - compact, at the top
             OutlinedTextField(
                 value = state.searchQuery,
                 onValueChange = onSearchQueryChange,
@@ -303,30 +276,29 @@ fun NoteListPanel(
                 }
             )
 
-            Spacer(Modifier.height(AppSpacing.sm))
+            Spacer(Modifier.height(AppSpacing.md))
+
+            // New note - left aligned with icon
             SidebarAction(
                 icon = "+",
                 text = Strings.newNote,
                 onClick = onCreateNote,
                 modifier = Modifier.fillMaxWidth()
             )
-            Row(modifier = Modifier.fillMaxWidth()) {
-                SidebarAction(
-                    icon = "v",
-                    text = Strings.importAction,
-                    onClick = onImport,
-                    modifier = Modifier.weight(1f)
-                )
-                SidebarAction(
-                    icon = "^",
-                    text = Strings.exportAction,
-                    onClick = onExport,
-                    modifier = Modifier.weight(1f),
-                    enabled = state.selectedNoteId != null
-                )
-            }
 
             Spacer(Modifier.height(AppSpacing.sm))
+
+            // Import - left aligned
+            SidebarAction(
+                icon = "\u2193",
+                text = Strings.importAction,
+                onClick = onImport,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(Modifier.height(AppSpacing.md))
+
+            // Note count + more actions
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -337,6 +309,7 @@ fun NoteListPanel(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f)
                 )
+                // Sort controls moved inline instead of separate row
                 TextButton(
                     onClick = { onSortModeChange(SortMode.RECENTLY_UPDATED) },
                     contentPadding = AppComponentDefaults.toolbarPadding
@@ -344,11 +317,8 @@ fun NoteListPanel(
                     Text(
                         text = Strings.recent,
                         style = MaterialTheme.typography.labelSmall,
-                        fontWeight = if (state.sortMode == SortMode.RECENTLY_UPDATED) {
-                            FontWeight.Bold
-                        } else {
-                            FontWeight.Normal
-                        }
+                        fontWeight = if (state.sortMode == SortMode.RECENTLY_UPDATED)
+                            FontWeight.Bold else FontWeight.Normal
                     )
                 }
                 TextButton(
@@ -358,11 +328,8 @@ fun NoteListPanel(
                     Text(
                         text = Strings.sortByTitle,
                         style = MaterialTheme.typography.labelSmall,
-                        fontWeight = if (state.sortMode == SortMode.TITLE) {
-                            FontWeight.Bold
-                        } else {
-                            FontWeight.Normal
-                        }
+                        fontWeight = if (state.sortMode == SortMode.TITLE)
+                            FontWeight.Bold else FontWeight.Normal
                     )
                 }
             }
@@ -410,7 +377,7 @@ fun NoteListPanel(
                             else -> false
                         }
                     },
-                contentPadding = PaddingValues(vertical = AppSpacing.sm),
+                contentPadding = PaddingValues(top = AppSpacing.xs, bottom = AppSpacing.sm),
                 verticalArrangement = Arrangement.spacedBy(AppSpacing.xs)
             ) {
                 if (state.filteredNotes.isEmpty()) {
@@ -424,32 +391,17 @@ fun NoteListPanel(
                             text = emptyMsg,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(AppSpacing.lg)
+                            modifier = Modifier.padding(vertical = AppSpacing.lg)
                         )
                     }
                 }
-                for (group in state.filteredGroups) {
-                    val label = group.category.ifEmpty { Strings.uncategorized }
-                    item(key = "cat_" + group.category) {
-                        Text(
-                            text = label.uppercase(),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(top = AppSpacing.sm, bottom = AppSpacing.xs)
-                        )
-                    }
-                    items(group.notes, key = { it.id }) { note ->
-                        NoteListItem(
-                            note = note,
-                            isSelected = note.id == state.selectedNoteId,
-                            onClick = {
-                                selectedIdx = state.filteredNotes.indexOfFirst { it.id == note.id }
-                                onSelectNote(note.id)
-                            },
-                            onDelete = { onDeleteNote(note.id) }
-                        )
-                    }
+                items(state.filteredNotes, key = { it.id }) { note ->
+                    NoteListItem(
+                        note = note,
+                        isSelected = note.id == state.selectedNoteId,
+                        onClick = { onSelectNote(note.id) },
+                        onDelete = { onDeleteNote(note.id) }
+                    )
                 }
             }
         }
