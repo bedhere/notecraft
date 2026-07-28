@@ -20,13 +20,19 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.*
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.notecraft.data.importexport.ImportExportUseCase
@@ -67,6 +73,7 @@ fun NoteApp(
     val settingsState by settingsViewModel.state.collectAsStateWithLifecycle()
     val titleFocusRequester = remember { FocusRequester() }
     var showDeleteConfirm by remember { mutableStateOf<String?>(null) }
+    var isSidebarVisible by remember { mutableStateOf(true) }
 
     LaunchedEffect(listState.selectedNoteId) {
         listState.selectedNoteId?.let { id ->
@@ -119,19 +126,33 @@ fun NoteApp(
                     }
                 ) {
                     Row(modifier = Modifier.fillMaxSize()) {
-                    NoteListPanel(
-                        state = listState,
-                        onCreateNote = { editorViewModel.saveAndContinue { listViewModel.createNote() } },
-                        onSelectNote = { id -> editorViewModel.saveAndContinue { listViewModel.selectNote(id) } },
-                        onDeleteNote = { showDeleteConfirm = it },
-                        onSortModeChange = { listViewModel.setSortMode(it) },
-                        onSearchQueryChange = { listViewModel.setSearchQuery(it) },
-                        onSettingsClick = { settingsViewModel.toggleOpen() },
-                        onImport = { if (importExport != null) scope.launch { importExport.importMarkdownFile(); listViewModel.loadAll() } },
-                        onExport = { val nid = listState.selectedNoteId; if (nid != null && importExport != null) scope.launch { importExport.exportMarkdownFile(nid) } },
-                        modifier = Modifier.width(AppSpacing.sidebarWidth).fillMaxHeight()
-                    )
-                    VerticalDivider()
+                    if (isSidebarVisible) {
+                        NoteListPanel(
+                            state = listState,
+                            onCreateNote = { editorViewModel.saveAndContinue { listViewModel.createNote() } },
+                            onSelectNote = { id -> editorViewModel.saveAndContinue { listViewModel.selectNote(id) } },
+                            onDeleteNote = { showDeleteConfirm = it },
+                            onSortModeChange = { listViewModel.setSortMode(it) },
+                            onSearchQueryChange = { listViewModel.setSearchQuery(it) },
+                            onSettingsClick = { settingsViewModel.toggleOpen() },
+                            onImport = {
+                                if (importExport != null) {
+                                    scope.launch {
+                                        importExport.importMarkdownFile()
+                                        listViewModel.loadAll()
+                                    }
+                                }
+                            },
+                            onExport = {
+                                val nid = listState.selectedNoteId
+                                if (nid != null && importExport != null) {
+                                    scope.launch { importExport.exportMarkdownFile(nid) }
+                                }
+                            },
+                            modifier = Modifier.width(AppSpacing.sidebarWidth).fillMaxHeight()
+                        )
+                        VerticalDivider()
+                    }
                     if (settingsState.isOpen) {
                         SettingsContent(
                             state = settingsState,
@@ -147,6 +168,10 @@ fun NoteApp(
                             onTitleChange = { editorViewModel.updateTitle(it) },
                             onContentChange = { editorViewModel.updateContent(it) },
                             onSave = { editorViewModel.save() },
+                            onDelete = { editorState.noteId?.let { showDeleteConfirm = it } },
+                            onUndo = { editorViewModel.undo() },
+                            onRedo = { editorViewModel.redo() },
+                            onToggleSidebar = { isSidebarVisible = !isSidebarVisible },
                             onViewModeChange = { editorViewModel.setViewMode(it) },
                             onToggleTile = onToggleTile,
                             titleFocusRequester = titleFocusRequester,
@@ -517,6 +542,10 @@ fun EditorPanel(
     onTitleChange: (String) -> Unit,
     onContentChange: (String) -> Unit,
     onSave: () -> Unit,
+    onDelete: () -> Unit = {},
+    onUndo: () -> Unit = {},
+    onRedo: () -> Unit = {},
+    onToggleSidebar: () -> Unit = {},
     onViewModeChange: (ViewMode) -> Unit,
     onToggleTile: ((String) -> Unit)? = null,
     titleFocusRequester: FocusRequester = remember { FocusRequester() },
@@ -532,48 +561,19 @@ fun EditorPanel(
             return
         }
 
-        Row(modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically) {
-            val saveText = when (state.saveState) {
-                is SaveState.Idle -> ""
-                is SaveState.Dirty -> Strings.saveUnsaved
-                is SaveState.Saving -> Strings.saveSaving
-                is SaveState.Saved -> Strings.saveSaved
-                is SaveState.Error -> Strings.saveError(state.saveState.message)
-            }
-            Text(saveText, style = MaterialTheme.typography.labelSmall)
-            Spacer(Modifier.weight(1f))
-            SingleChoiceSegmentedButtonRow(modifier = Modifier.width(AppSpacing.segmentedButtonWidth)) {
-                ViewMode.entries.forEachIndexed { idx, mode ->
-                    SegmentedButton(
-                        shape = SegmentedButtonDefaults.itemShape(index = idx, count = ViewMode.entries.size),
-                        onClick = { onViewModeChange(mode) },
-                        selected = state.viewMode == mode
-                    ) {
-                        Text(when (mode) {
-                            ViewMode.EDIT -> Strings.editMode; ViewMode.SPLIT -> Strings.splitMode; ViewMode.PREVIEW -> Strings.previewMode
-                        }, style = MaterialTheme.typography.labelSmall)
-                    }
-                }
-            }
-            Spacer(Modifier.width(AppSpacing.sm))
-            onToggleTile?.let { toggle ->
-                IconButton(onClick = { state.noteId?.let { toggle(it) } }, modifier = Modifier.size(AppSpacing.iconButtonMedium)) {
-                    Text(Strings.pin, fontSize = 10.sp)
-                }
-            }
-            Spacer(Modifier.width(AppSpacing.sm))
-            Text(Strings.words(state.wordCount), style = MaterialTheme.typography.labelSmall)
-            Spacer(Modifier.width(AppSpacing.md))
-            Button(
-                onClick = onSave,
-                enabled = state.saveState is SaveState.Dirty,
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
-            ) {
-                Text(Strings.save, style = MaterialTheme.typography.labelMedium)
-            }
-        }
+        EditorActionBar(
+            state = state,
+            onToggleSidebar = onToggleSidebar,
+            onToggleTile = onToggleTile,
+            onUndo = onUndo,
+            onRedo = onRedo,
+            onSave = onSave,
+            onDelete = onDelete,
+            onViewModeChange = onViewModeChange
+        )
+        Spacer(Modifier.height(AppSpacing.sm))
+        EditorNoteHeader(state = state)
+        HorizontalDivider(modifier = Modifier.padding(top = AppSpacing.sm))
         Spacer(Modifier.height(AppSpacing.md))
         when (state.viewMode) {
             ViewMode.EDIT -> {
@@ -581,7 +581,6 @@ fun EditorPanel(
             }
             ViewMode.PREVIEW -> {
                 Column(modifier = Modifier.fillMaxSize()) {
-                    Text(state.title, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(bottom = AppSpacing.lg))
                     MarkdownContent(content = state.content, fontSize = 14, modifier = Modifier.fillMaxSize())
                 }
             }
@@ -611,6 +610,215 @@ fun EditorPanel(
         }
         Spacer(Modifier.height(AppSpacing.md))
     }
+}
+
+@Composable
+private fun EditorActionBar(
+    state: NoteEditorState,
+    onToggleSidebar: () -> Unit,
+    onToggleTile: ((String) -> Unit)?,
+    onUndo: () -> Unit,
+    onRedo: () -> Unit,
+    onSave: () -> Unit,
+    onDelete: () -> Unit,
+    onViewModeChange: (ViewMode) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().height(AppSpacing.editorHeaderHeight),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        EditorActionButton(
+            glyph = "[]",
+            label = "Toggle sidebar",
+            onClick = onToggleSidebar
+        )
+        onToggleTile?.let { toggle ->
+            EditorActionButton(
+                glyph = "P",
+                label = Strings.pin,
+                onClick = { state.noteId?.let(toggle) }
+            )
+        }
+        EditorActionButton(
+            glyph = "<-",
+            label = "Undo",
+            enabled = state.canUndo,
+            onClick = onUndo
+        )
+        EditorActionButton(
+            glyph = "->",
+            label = "Redo",
+            enabled = state.canRedo,
+            onClick = onRedo
+        )
+        Spacer(Modifier.weight(1f))
+        EditorTextAction(
+            glyph = "S",
+            label = Strings.save,
+            enabled = state.saveState is SaveState.Dirty,
+            onClick = onSave
+        )
+        EditorTextAction(
+            glyph = "X",
+            label = Strings.deleteConfirm,
+            tint = MaterialTheme.colorScheme.error,
+            onClick = onDelete
+        )
+        Spacer(Modifier.width(AppSpacing.sm))
+        SingleChoiceSegmentedButtonRow(modifier = Modifier.width(AppSpacing.segmentedButtonWidth)) {
+            ViewMode.entries.forEachIndexed { idx, mode ->
+                SegmentedButton(
+                    shape = SegmentedButtonDefaults.itemShape(index = idx, count = ViewMode.entries.size),
+                    onClick = { onViewModeChange(mode) },
+                    selected = state.viewMode == mode
+                ) {
+                    Text(
+                        text = when (mode) {
+                            ViewMode.EDIT -> Strings.editMode
+                            ViewMode.SPLIT -> Strings.splitMode
+                            ViewMode.PREVIEW -> Strings.previewMode
+                        },
+                        style = MaterialTheme.typography.labelSmall
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun EditorActionButton(
+    glyph: String,
+    label: String,
+    onClick: () -> Unit,
+    enabled: Boolean = true
+) {
+    EditorTooltip(label = label) {
+        IconButton(
+            onClick = onClick,
+            enabled = enabled,
+            modifier = Modifier
+                .size(AppSpacing.iconButtonMedium)
+                .semantics { contentDescription = label }
+        ) {
+            Text(
+                text = glyph,
+                style = MaterialTheme.typography.labelLarge,
+                color = if (enabled) {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun EditorTextAction(
+    glyph: String,
+    label: String,
+    onClick: () -> Unit,
+    enabled: Boolean = true,
+    tint: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurfaceVariant
+) {
+    EditorTooltip(label = label) {
+        TextButton(
+            onClick = onClick,
+            enabled = enabled,
+            modifier = Modifier.semantics { contentDescription = label },
+            contentPadding = PaddingValues(horizontal = AppSpacing.md, vertical = AppSpacing.sm)
+        ) {
+            Text(text = glyph, style = MaterialTheme.typography.labelLarge, color = tint)
+            Spacer(Modifier.width(AppSpacing.sm))
+            Text(text = label, style = MaterialTheme.typography.labelMedium, color = tint)
+        }
+    }
+}
+
+@Composable
+private fun EditorTooltip(
+    label: String,
+    content: @Composable () -> Unit
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isHovered by interactionSource.collectIsHoveredAsState()
+    val tooltipOffset = with(LocalDensity.current) {
+        -AppSpacing.editorHeaderHeight.roundToPx()
+    }
+    Box(modifier = Modifier.hoverable(interactionSource)) {
+        content()
+        if (isHovered) {
+            Popup(
+                alignment = Alignment.TopCenter,
+                offset = IntOffset(0, tooltipOffset),
+                properties = PopupProperties(focusable = false)
+            ) {
+                Surface(
+                    color = MaterialTheme.colorScheme.inverseSurface,
+                    shape = AppShapes.compact
+                ) {
+                    Text(
+                        text = label,
+                        color = MaterialTheme.colorScheme.inverseOnSurface,
+                        style = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier.padding(horizontal = AppSpacing.md, vertical = AppSpacing.sm)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun EditorNoteHeader(state: NoteEditorState) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = state.title.ifBlank { Strings.currentNotePlaceholder },
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(top = AppSpacing.sm),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            state.updatedAt?.let {
+                Text(
+                    text = TimeFormat.formatDateTime(it),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.width(AppSpacing.lg))
+            }
+            Text(
+                text = Strings.words(state.wordCount),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.width(AppSpacing.lg))
+            SaveStateLabel(state.saveState)
+        }
+    }
+}
+
+@Composable
+private fun SaveStateLabel(saveState: SaveState) {
+    val text = when (saveState) {
+        SaveState.Idle -> Strings.saveSaved
+        SaveState.Dirty -> Strings.saveUnsaved
+        SaveState.Saving -> Strings.saveSaving
+        SaveState.Saved -> Strings.saveSaved
+        is SaveState.Error -> Strings.saveError(saveState.message)
+    }
+    val color = when (saveState) {
+        is SaveState.Error -> MaterialTheme.colorScheme.error
+        SaveState.Dirty -> MaterialTheme.colorScheme.primary
+        SaveState.Saving -> MaterialTheme.colorScheme.onSurfaceVariant
+        SaveState.Idle, SaveState.Saved -> MaterialTheme.colorScheme.tertiary
+    }
+    Text(text = text, style = MaterialTheme.typography.labelSmall, color = color)
 }
 
 @OptIn(ExperimentalComposeUiApi::class)

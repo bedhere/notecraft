@@ -24,12 +24,15 @@ class NoteEditorViewModel(
     private var autoSaveJob: Job? = null
     private var saveQueue: Job? = null
     private var loadEpoch = 0
+    private val undoStack = ArrayDeque<EditSnapshot>()
+    private val redoStack = ArrayDeque<EditSnapshot>()
 
     val isDirty: Boolean get() = _state.value.saveState == SaveState.Dirty
 
     fun loadNote(id: String) {
         loadEpoch++
         val currentEpoch = loadEpoch
+        clearHistory()
         viewModelScope.launch {
             try {
                 val note = noteRepository.getNote(id)
@@ -38,6 +41,7 @@ class NoteEditorViewModel(
                     noteId = note.id,
                     title = note.title,
                     content = note.content,
+                    updatedAt = note.updatedAt,
                     wordCount = note.wordCount
                 )
             } catch (e: Exception) {
@@ -52,21 +56,45 @@ class NoteEditorViewModel(
         autoSaveJob?.cancel()
         loadEpoch++
         saveQueue?.cancel()
+        clearHistory()
         _state.value = NoteEditorState()
     }
 
     fun updateTitle(title: String) {
-        _state.value = _state.value.copy(title = title, saveState = SaveState.Dirty)
+        if (title == _state.value.title) return
+        recordEdit()
+        _state.value = _state.value.copy(
+            title = title,
+            saveState = SaveState.Dirty,
+            canUndo = undoStack.isNotEmpty(),
+            canRedo = false
+        )
         scheduleAutoSave()
     }
 
     fun updateContent(content: String) {
+        if (content == _state.value.content) return
+        recordEdit()
         _state.value = _state.value.copy(
             content = content,
             wordCount = NoteUtils.countChars(content),
-            saveState = SaveState.Dirty
+            saveState = SaveState.Dirty,
+            canUndo = undoStack.isNotEmpty(),
+            canRedo = false
         )
         scheduleAutoSave()
+    }
+
+    fun undo() {
+        val previous = undoStack.removeLastOrNull() ?: return
+        redoStack.addLast(EditSnapshot(_state.value.title, _state.value.content))
+        applySnapshot(previous)
+    }
+
+    fun redo() {
+        val next = redoStack.removeLastOrNull() ?: return
+        undoStack.addLast(EditSnapshot(_state.value.title, _state.value.content))
+        applySnapshot(next)
     }
 
     fun save() {
@@ -78,12 +106,15 @@ class NoteEditorViewModel(
             if (currentEpoch != loadEpoch) return@launch
             _state.value = s.copy(saveState = SaveState.Saving)
             try {
-                noteRepository.updateNote(noteId, SaveNoteRequest(
+                val updatedNote = noteRepository.updateNote(noteId, SaveNoteRequest(
                     title = s.title,
                     content = s.content,
                     category = ""
                 ))
-                _state.value = _state.value.copy(saveState = SaveState.Saved)
+                _state.value = _state.value.copy(
+                    updatedAt = updatedNote.updatedAt,
+                    saveState = SaveState.Saved
+                )
             } catch (e: Exception) {
                 _state.value = _state.value.copy(
                     saveState = SaveState.Error(e.message ?: Strings.saveFailed)
@@ -105,8 +136,11 @@ class NoteEditorViewModel(
                 }
                 _state.value = s.copy(saveState = SaveState.Saving)
                 try {
-                    noteRepository.updateNote(noteId, SaveNoteRequest(s.title, s.content, ""))
-                    _state.value = _state.value.copy(saveState = SaveState.Saved)
+                    val updatedNote = noteRepository.updateNote(noteId, SaveNoteRequest(s.title, s.content, ""))
+                    _state.value = _state.value.copy(
+                        updatedAt = updatedNote.updatedAt,
+                        saveState = SaveState.Saved
+                    )
                 } catch (e: Exception) {
                 _state.value = _state.value.copy(
                     saveState = SaveState.Error(e.message ?: Strings.saveFailed)
@@ -134,4 +168,31 @@ class NoteEditorViewModel(
         autoSaveJob?.cancel()
         saveQueue?.cancel()
     }
+
+    private fun recordEdit() {
+        undoStack.addLast(EditSnapshot(_state.value.title, _state.value.content))
+        redoStack.clear()
+    }
+
+    private fun applySnapshot(snapshot: EditSnapshot) {
+        _state.value = _state.value.copy(
+            title = snapshot.title,
+            content = snapshot.content,
+            wordCount = NoteUtils.countChars(snapshot.content),
+            saveState = SaveState.Dirty,
+            canUndo = undoStack.isNotEmpty(),
+            canRedo = redoStack.isNotEmpty()
+        )
+        scheduleAutoSave()
+    }
+
+    private fun clearHistory() {
+        undoStack.clear()
+        redoStack.clear()
+    }
+
+    private data class EditSnapshot(
+        val title: String,
+        val content: String
+    )
 }

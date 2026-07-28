@@ -14,7 +14,10 @@ data class NoteEditorState(
     val noteId: String? = null,
     val title: String = "",
     val content: String = "",
+    val updatedAt: Long? = null,
     val saveState: SaveState = SaveState.Idle,
     val wordCount: Int = 0,
-    val viewMode: ViewMode = ViewMode.EDIT
+    val viewMode: ViewMode = ViewMode.EDIT,
+    val canUndo: Boolean = false,
+    val canRedo: Boolean = false
 )
