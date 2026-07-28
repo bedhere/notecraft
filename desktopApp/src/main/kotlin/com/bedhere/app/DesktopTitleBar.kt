@@ -1,13 +1,17 @@
-package com.bedhere.app
+﻿package com.bedhere.app
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.window.WindowDraggableArea
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -21,6 +25,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.WindowScope
 import androidx.compose.ui.window.WindowState
@@ -43,34 +48,37 @@ fun DesktopTitleBar(
         }
     }
 
-    with(windowScope) {
-        WindowDraggableArea(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(AppSpacing.titleBarHeight)
-                .background(MaterialTheme.colorScheme.surface)
-                .pointerInput(windowState.placement) {
-                    detectTapGestures(onDoubleTap = { toggleMaximize() })
-                }
-        ) {
-            Row(
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(AppSpacing.titleBarHeight)
+    ) {
+        // WindowDraggableArea handles window dragging and double-tap
+        with(windowScope) {
+            WindowDraggableArea(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(AppSpacing.titleBarHeight)
-                    .padding(start = 18.dp, end = 6.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.surface)
+                    .pointerInput(windowState.placement) {
+                        detectTapGestures(onDoubleTap = { toggleMaximize() })
+                    }
             ) {
-                Text(
-                    text = Strings.appDisplayName,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                currentNoteTitle?.let { title ->
-                    Row(
-                        modifier = Modifier.weight(1f).padding(horizontal = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(start = 18.dp, end = 160.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = Strings.appDisplayName,
+                        modifier = Modifier.widthIn(min = 84.dp, max = 170.dp),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    currentNoteTitle?.let { title ->
                         Text(
                             text = " - ",
                             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -84,35 +92,48 @@ fun DesktopTitleBar(
                             overflow = TextOverflow.Ellipsis
                         )
                     }
-                } ?: Spacer(Modifier.weight(1f))
-                TitleBarButton(label = "Minimize", glyph = "_", onClick = onMinimize)
-                TitleBarButton(
-                    label = if (windowState.placement == WindowPlacement.Maximized) "Restore" else "Maximize",
-                    glyph = if (windowState.placement == WindowPlacement.Maximized) "><" else "[]",
-                    onClick = toggleMaximize
-                )
-                TitleBarButton(
-                    label = "Close",
-                    glyph = "X",
-                    onClick = onClose,
-                    tint = MaterialTheme.colorScheme.error
-                )
+                }
             }
         }
-    }
-}
 
-@Composable
-private fun TitleBarButton(
-    label: String,
-    glyph: String,
-    onClick: () -> Unit,
-    tint: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurfaceVariant
-) {
-    IconButton(
-        onClick = onClick,
-        modifier = Modifier.size(36.dp).semantics { contentDescription = label }
-    ) {
-        Text(text = glyph, color = tint, style = MaterialTheme.typography.bodyLarge)
+        // Window control buttons - placed outside WindowDraggableArea
+        // so they don't interfere with window dragging
+        Row(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .fillMaxHeight(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(
+                onClick = onMinimize,
+                modifier = Modifier
+                    .size(46.dp)
+                    .semantics { contentDescription = "Minimize" }
+            ) {
+                Text("_", fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            IconButton(
+                onClick = toggleMaximize,
+                modifier = Modifier
+                    .size(46.dp)
+                    .semantics {
+                        contentDescription = if (windowState.placement == WindowPlacement.Maximized) "Restore" else "Maximize"
+                    }
+            ) {
+                if (windowState.placement == WindowPlacement.Maximized) {
+                    Text("\u2039\u203A", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                } else {
+                    Text("\u25A1", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            IconButton(
+                onClick = onClose,
+                modifier = Modifier
+                    .size(46.dp)
+                    .semantics { contentDescription = "Close" }
+            ) {
+                Text("\u2715", fontSize = 15.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
     }
 }
