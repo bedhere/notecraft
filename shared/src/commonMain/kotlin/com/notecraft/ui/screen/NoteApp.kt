@@ -46,6 +46,7 @@ import com.notecraft.domain.repository.NoteRepository
 import com.notecraft.domain.repository.SettingsRepository
 import com.notecraft.presentation.note.*
 import com.notecraft.presentation.settings.SettingsViewModel
+import com.notecraft.ui.editor.EditorStatusInfo
 import com.notecraft.ui.editor.MarkdownFormat
 import com.notecraft.ui.editor.MarkdownFormatting
 import com.notecraft.ui.markdown.MarkdownContent
@@ -652,8 +653,58 @@ fun EditorPanel(
                 }
             }
         }
-        Spacer(Modifier.height(AppSpacing.md))
+        HorizontalDivider()
+        EditorStatusBar(value = contentValue)
     }
+}
+
+@Composable
+private fun EditorStatusBar(value: TextFieldValue) {
+    val cursor = EditorStatusInfo.cursorPosition(value.text, value.selection.end)
+    val sizeLabel = EditorStatusInfo.utf8SizeLabel(value.text)
+    val labelColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.74f)
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(AppSpacing.statusBarHeight)
+            .padding(horizontal = AppSpacing.lg),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        StatusText(text = "Ln ${cursor.line}", color = labelColor)
+        StatusSeparator(color = labelColor)
+        StatusText(text = "Col ${cursor.column}", color = labelColor)
+        StatusSeparator(color = labelColor)
+        StatusText(text = "Markdown", color = labelColor)
+        Spacer(Modifier.weight(1f))
+        StatusText(text = "UTF-8", color = labelColor)
+        StatusSeparator(color = labelColor)
+        StatusText(text = sizeLabel, color = labelColor)
+    }
+}
+
+@Composable
+private fun StatusText(
+    text: String,
+    color: androidx.compose.ui.graphics.Color
+) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelSmall,
+        color = color,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis
+    )
+}
+
+@Composable
+private fun StatusSeparator(color: androidx.compose.ui.graphics.Color) {
+    Text(
+        text = "|",
+        style = MaterialTheme.typography.labelSmall,
+        color = color.copy(alpha = 0.42f),
+        modifier = Modifier.padding(horizontal = AppSpacing.md)
+    )
 }
 
 @Composable
