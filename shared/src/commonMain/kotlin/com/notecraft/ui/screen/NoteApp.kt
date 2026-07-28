@@ -57,6 +57,10 @@ import com.notecraft.ui.theme.AppSpacing
 import com.notecraft.util.Strings
 import com.notecraft.util.TimeFormat
 import com.notecraft.util.NoteUtils
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalComposeUiApi::class)
@@ -788,27 +792,44 @@ private fun EditorActionBar(
         val compact = maxWidth < AppSpacing.editorActionCompactWidth
         val narrow = maxWidth < AppSpacing.editorActionNarrowWidth
         if (compact) {
-            Column(modifier = Modifier.fillMaxWidth().heightIn(min = AppSpacing.editorHeaderHeight)) {
+            Column(modifier = Modifier.fillMaxWidth().heightIn(min = AppSpacing.toolbarHeight)) {
                 Row(
                     modifier = Modifier.fillMaxWidth().heightIn(min = AppSpacing.toolbarHeight),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    EditorCoreActionButtons(
-                        state = state,
-                        onToggleSidebar = onToggleSidebar,
-                        onToggleTile = onToggleTile,
-                        onUndo = onUndo,
-                        onRedo = onRedo
+                    EditorActionIcon(
+                        icon = SidebarToggleIcon,
+                        label = "Toggle sidebar",
+                        onClick = onToggleSidebar
+                    )
+                    onToggleTile?.let { toggle ->
+                        EditorActionIcon(
+                            icon = PinIcon,
+                            label = Strings.pin,
+                            onClick = { state.noteId?.let(toggle) }
+                        )
+                    }
+                    EditorActionIcon(
+                        icon = UndoIcon,
+                        label = "Undo",
+                        enabled = state.canUndo,
+                        onClick = onUndo
+                    )
+                    EditorActionIcon(
+                        icon = RedoIcon,
+                        label = "Redo",
+                        enabled = state.canRedo,
+                        onClick = onRedo
                     )
                     Spacer(Modifier.weight(1f))
-                    EditorActionButton(
-                        glyph = "S",
+                    EditorActionIcon(
+                        icon = SaveIcon,
                         label = Strings.save,
                         enabled = state.saveState is SaveState.Dirty,
                         onClick = onSave
                     )
-                    EditorActionButton(
-                        glyph = "X",
+                    EditorActionIcon(
+                        icon = DeleteIcon,
                         label = Strings.deleteConfirm,
                         tint = MaterialTheme.colorScheme.error,
                         onClick = onDelete
@@ -824,30 +845,46 @@ private fun EditorActionBar(
             }
         } else {
             Row(
-                modifier = Modifier.fillMaxWidth().heightIn(min = AppSpacing.editorHeaderHeight),
+                modifier = Modifier.fillMaxWidth().heightIn(min = AppSpacing.toolbarHeight),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                EditorCoreActionButtons(
-                    state = state,
-                    onToggleSidebar = onToggleSidebar,
-                    onToggleTile = onToggleTile,
-                    onUndo = onUndo,
-                    onRedo = onRedo
+                EditorActionIcon(
+                    icon = SidebarToggleIcon,
+                    label = "Toggle sidebar",
+                    onClick = onToggleSidebar
                 )
-                Spacer(Modifier.weight(1f))
-                EditorTextAction(
-                    glyph = "S",
+                onToggleTile?.let { toggle ->
+                    EditorActionIcon(
+                        icon = PinIcon,
+                        label = Strings.pin,
+                        onClick = { state.noteId?.let(toggle) }
+                    )
+                }
+                EditorActionIcon(
+                    icon = UndoIcon,
+                    label = "Undo",
+                    enabled = state.canUndo,
+                    onClick = onUndo
+                )
+                EditorActionIcon(
+                    icon = RedoIcon,
+                    label = "Redo",
+                    enabled = state.canRedo,
+                    onClick = onRedo
+                )
+                EditorActionIcon(
+                    icon = SaveIcon,
                     label = Strings.save,
                     enabled = state.saveState is SaveState.Dirty,
                     onClick = onSave
                 )
-                EditorTextAction(
-                    glyph = "X",
+                EditorActionIcon(
+                    icon = DeleteIcon,
                     label = Strings.deleteConfirm,
                     tint = MaterialTheme.colorScheme.error,
                     onClick = onDelete
                 )
-                Spacer(Modifier.width(AppSpacing.sm))
+                Spacer(Modifier.weight(1f))
                 EditorViewModeSelector(
                     state = state,
                     compactLabels = false,
@@ -857,40 +894,6 @@ private fun EditorActionBar(
             }
         }
     }
-}
-
-@Composable
-private fun EditorCoreActionButtons(
-    state: NoteEditorState,
-    onToggleSidebar: () -> Unit,
-    onToggleTile: ((String) -> Unit)?,
-    onUndo: () -> Unit,
-    onRedo: () -> Unit
-) {
-    EditorActionButton(
-        glyph = "[]",
-        label = "Toggle sidebar",
-        onClick = onToggleSidebar
-    )
-    onToggleTile?.let { toggle ->
-        EditorActionButton(
-            glyph = "P",
-            label = Strings.pin,
-            onClick = { state.noteId?.let(toggle) }
-        )
-    }
-    EditorActionButton(
-        glyph = "<-",
-        label = "Undo",
-        enabled = state.canUndo,
-        onClick = onUndo
-    )
-    EditorActionButton(
-        glyph = "->",
-        label = "Redo",
-        enabled = state.canRedo,
-        onClick = onRedo
-    )
 }
 
 @Composable
@@ -909,9 +912,9 @@ private fun EditorViewModeSelector(
             ) {
                 Text(
                     text = when (mode) {
-                        ViewMode.EDIT -> if (compactLabels) "E" else Strings.editMode
-                        ViewMode.SPLIT -> if (compactLabels) "S" else Strings.splitMode
-                        ViewMode.PREVIEW -> if (compactLabels) "P" else Strings.previewMode
+                        ViewMode.EDIT -> if (compactLabels) Strings.editMode else Strings.editMode
+                        ViewMode.SPLIT -> if (compactLabels) Strings.splitMode else Strings.splitMode
+                        ViewMode.PREVIEW -> if (compactLabels) Strings.previewMode else Strings.previewMode
                     },
                     style = MaterialTheme.typography.labelSmall,
                     maxLines = 1,
@@ -923,12 +926,12 @@ private fun EditorViewModeSelector(
 }
 
 @Composable
-private fun EditorActionButton(
-    glyph: String,
+private fun EditorActionIcon(
+    icon: @Composable (Color) -> Unit,
     label: String,
     onClick: () -> Unit,
     enabled: Boolean = true,
-    tint: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurfaceVariant
+    tint: Color = MaterialTheme.colorScheme.onSurfaceVariant
 ) {
     EditorTooltip(label = label) {
         IconButton(
@@ -938,37 +941,12 @@ private fun EditorActionButton(
                 .size(AppSpacing.iconButtonMedium)
                 .semantics { contentDescription = label }
         ) {
-            Text(
-                text = glyph,
-                style = MaterialTheme.typography.labelLarge,
-                color = if (enabled) {
-                    tint
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
-                }
-            )
-        }
-    }
-}
-
-@Composable
-private fun EditorTextAction(
-    glyph: String,
-    label: String,
-    onClick: () -> Unit,
-    enabled: Boolean = true,
-    tint: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurfaceVariant
-) {
-    EditorTooltip(label = label) {
-        TextButton(
-            onClick = onClick,
-            enabled = enabled,
-            modifier = Modifier.semantics { contentDescription = label },
-            contentPadding = PaddingValues(horizontal = AppSpacing.md, vertical = AppSpacing.sm)
-        ) {
-            Text(text = glyph, style = MaterialTheme.typography.labelLarge, color = tint)
-            Spacer(Modifier.width(AppSpacing.sm))
-            Text(text = label, style = MaterialTheme.typography.labelMedium, color = tint)
+            Box(modifier = Modifier.size(18.dp), contentAlignment = Alignment.Center) {
+                icon(
+                    if (enabled) tint
+                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                )
+            }
         }
     }
 }
@@ -981,7 +959,7 @@ private fun EditorTooltip(
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
     val tooltipOffset = with(LocalDensity.current) {
-        -AppSpacing.editorHeaderHeight.roundToPx()
+        -AppSpacing.toolbarHeight.roundToPx()
     }
     Box(modifier = Modifier.hoverable(interactionSource)) {
         content()
@@ -1004,6 +982,103 @@ private fun EditorTooltip(
                 }
             }
         }
+    }
+}
+
+// === Editor toolbar vector icons ===
+
+private val SidebarToggleIcon: @Composable (Color) -> Unit = { color ->
+    androidx.compose.foundation.Canvas(modifier = Modifier.size(16.dp)) {
+        val inset = 2f
+        val dividerX = size.width * 0.32f
+        val w = size.width - inset * 2
+        val h = size.height - inset * 2
+        // Main right area
+        drawRect(color = color, topLeft = Offset(dividerX, inset), size = androidx.compose.ui.geometry.Size(w - dividerX + inset, h),
+            style = Stroke(width = 1.6f))
+        // Left panel vertical line
+        drawLine(color = color, start = Offset(dividerX, inset), end = Offset(dividerX, size.height - inset),
+            strokeWidth = 1.6f)
+    }
+}
+
+private val PinIcon: @Composable (Color) -> Unit = { color ->
+    androidx.compose.foundation.Canvas(modifier = Modifier.size(16.dp)) {
+        val cx = size.width / 2f
+        val cy = size.height / 2f
+        // Pin head (circle at top)
+        drawCircle(color = color, radius = 2.5f, center = Offset(cx, cy - 4f))
+        // Pin shaft (line going down and slightly right)
+        drawLine(color = color, start = Offset(cx, cy - 1.5f), end = Offset(cx + 3f, cy + 4f), strokeWidth = 1.6f)
+        // Pin base (line going right)
+        drawLine(color = color, start = Offset(cx, cy + 4f), end = Offset(cx + 5f, cy + 4f), strokeWidth = 1.6f)
+    }
+}
+
+private val UndoIcon: @Composable (Color) -> Unit = { color ->
+    androidx.compose.foundation.Canvas(modifier = Modifier.size(16.dp)) {
+        val cx = size.width / 2f
+        val cy = size.height / 2f
+        val r = 5f
+        // Left-curving arrow
+        drawArc(color = color, startAngle = 90f, sweepAngle = -200f, useCenter = false,
+            topLeft = Offset(cx - 2f, cy - r), size = androidx.compose.ui.geometry.Size(r * 2f, r * 2f),
+            style = Stroke(width = 1.6f))
+        // Arrow head
+        val tipX = cx - 2f - r * 0.5f
+        val tipY = cy - r * 0.7f
+        drawLine(color = color, start = Offset(tipX + 3f, tipY - 3f), end = Offset(tipX, tipY), strokeWidth = 1.6f)
+        drawLine(color = color, start = Offset(tipX, tipY), end = Offset(tipX + 3f, tipY + 3f), strokeWidth = 1.6f)
+    }
+}
+
+private val RedoIcon: @Composable (Color) -> Unit = { color ->
+    androidx.compose.foundation.Canvas(modifier = Modifier.size(16.dp)) {
+        val cx = size.width / 2f
+        val cy = size.height / 2f
+        val r = 5f
+        drawArc(color = color, startAngle = -90f, sweepAngle = 200f, useCenter = false,
+            topLeft = Offset(cx - 2f, cy - r), size = androidx.compose.ui.geometry.Size(r * 2f, r * 2f),
+            style = Stroke(width = 1.6f))
+        val tipX = cx + 2f + r * 0.5f
+        val tipY = cy - r * 0.7f
+        drawLine(color = color, start = Offset(tipX - 3f, tipY - 3f), end = Offset(tipX, tipY), strokeWidth = 1.6f)
+        drawLine(color = color, start = Offset(tipX, tipY), end = Offset(tipX - 3f, tipY + 3f), strokeWidth = 1.6f)
+    }
+}
+
+private val SaveIcon: @Composable (Color) -> Unit = { color ->
+    androidx.compose.foundation.Canvas(modifier = Modifier.size(16.dp)) {
+        val inset = 2f
+        val w = size.width - inset * 2
+        val h = size.height - inset * 2
+        // Floppy disk body
+        drawRect(color = color, topLeft = Offset(inset, inset), size = androidx.compose.ui.geometry.Size(w, h),
+            style = Stroke(width = 1.6f))
+        // Top tab (label area)
+        drawRect(color = color, topLeft = Offset(inset + 3f, inset), style = Stroke(width = 1.6f),
+            size = androidx.compose.ui.geometry.Size(w - 6f, h * 0.45f))
+        // Bottom slot (metal slider area)
+        drawRect(color = color, topLeft = Offset(inset + w * 0.3f, inset + h * 0.5f), style = Stroke(width = 1.2f),
+            size = androidx.compose.ui.geometry.Size(w * 0.4f, h * 0.35f))
+    }
+}
+
+private val DeleteIcon: @Composable (Color) -> Unit = { color ->
+    androidx.compose.foundation.Canvas(modifier = Modifier.size(16.dp)) {
+        val inset = 2f
+        val w = size.width - inset * 2
+        val h = size.height - inset * 2
+        val bodyTop = inset + 3.5f
+        // Body
+        drawRect(color = color, topLeft = Offset(inset + 1.5f, bodyTop), style = Stroke(width = 1.6f),
+            size = androidx.compose.ui.geometry.Size(w - 3f, h - 3.5f))
+        // Lid
+        drawLine(color = color, start = Offset(inset + 1f, bodyTop), end = Offset(size.width - inset - 1f, bodyTop),
+            strokeWidth = 1.6f)
+        // Lid handle
+        drawLine(color = color, start = Offset(inset + 4f, bodyTop - 2.5f), end = Offset(inset + 4f + w * 0.35f, bodyTop - 2.5f),
+            strokeWidth = 1.6f)
     }
 }
 
@@ -1157,5 +1232,6 @@ private fun MarkdownToolbar(
         }
     }
 }
+
 
 
