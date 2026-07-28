@@ -26,9 +26,7 @@ class NoteListViewModel(
         viewModelScope.launch {
             _state.value = _state.value.copy(isLoading = true, error = null)
             try {
-                val notes = noteRepository.listNotes()
-                val cats = noteRepository.listCategories()
-                applyFilters(notes, cats, _state.value.sortMode, _state.value.searchQuery)
+                refreshNotes(preferredSelectedId = _state.value.selectedNoteId)
             } catch (e: Exception) {
                 _state.value = _state.value.copy(isLoading = false, error = e.message)
             }
@@ -45,8 +43,7 @@ class NoteListViewModel(
                 val note = noteRepository.createNote(
                     SaveNoteRequest(title = "", content = "", category = "")
                 )
-                loadAll()
-                _state.value = _state.value.copy(selectedNoteId = note.id)
+                refreshNotes(preferredSelectedId = note.id)
             } catch (e: Exception) {
                 _state.value = _state.value.copy(error = e.message)
             }
@@ -56,15 +53,10 @@ class NoteListViewModel(
     fun deleteNote(id: String) {
         viewModelScope.launch {
             try {
+                val fallback = NoteSelectionPolicy.afterDelete(id, _state.value.filteredNotes)
                 noteRepository.deleteNote(id)
-                val wasSelected = _state.value.selectedNoteId == id
-                loadAll()
-                if (wasSelected) {
-                    val remaining = _state.value.filteredNotes
-                    if (remaining.isNotEmpty()) {
-                        _state.value = _state.value.copy(selectedNoteId = remaining[0].id)
-                    }
-                }
+                val preferred = if (_state.value.selectedNoteId == id) fallback else _state.value.selectedNoteId
+                refreshNotes(preferredSelectedId = preferred)
             } catch (e: Exception) {
                 _state.value = _state.value.copy(error = e.message)
             }
@@ -75,13 +67,13 @@ class NoteListViewModel(
         if (query == _state.value.searchQuery) return
         val s = _state.value
         _state.value = s.copy(searchQuery = query)
-        applyFilters(s.notes, s.categories, s.sortMode, query)
+        applyFilters(s.notes, s.categories, s.sortMode, query, s.selectedNoteId)
     }
 
     fun setSortMode(mode: SortMode) {
         val s = _state.value
         _state.value = s.copy(sortMode = mode)
-        applyFilters(s.notes, s.categories, mode, s.searchQuery)
+        applyFilters(s.notes, s.categories, mode, s.searchQuery, s.selectedNoteId)
     }
 
     fun createCategory(name: String) {
@@ -121,7 +113,8 @@ class NoteListViewModel(
         notes: List<NoteMetadata>,
         categories: List<String>,
         sortMode: SortMode,
-        query: String
+        query: String,
+        preferredSelectedId: String? = _state.value.selectedNoteId
     ) {
         val filtered = if (query.isBlank()) notes
             else NoteUtils.filterNotes(notes, query)
@@ -130,13 +123,34 @@ class NoteListViewModel(
             SortMode.TITLE -> filtered.sortedBy { it.title.lowercase() }
         }
         val groups = NoteUtils.groupByCategory(sorted, categories)
+        val selectedNoteId = NoteSelectionPolicy.resolve(preferredSelectedId, sorted)
         _state.value = _state.value.copy(
             notes = notes,
             categories = categories,
             filteredNotes = sorted,
             filteredGroups = groups,
             isLoading = false,
-            searchQuery = query
+            searchQuery = query,
+            selectedNoteId = selectedNoteId
         )
+    }
+
+    private suspend fun refreshNotes(preferredSelectedId: String?) {
+        val notes = noteRepository.listNotes()
+        val cats = noteRepository.listCategories()
+        applyFilters(notes, cats, _state.value.sortMode, _state.value.searchQuery, preferredSelectedId)
+    }
+}
+
+internal object NoteSelectionPolicy {
+    fun resolve(preferredSelectedId: String?, notes: List<NoteMetadata>): String? =
+        preferredSelectedId?.takeIf { id -> notes.any { it.id == id } }
+            ?: notes.firstOrNull()?.id
+
+    fun afterDelete(deletedId: String, notes: List<NoteMetadata>): String? {
+        val deletedIndex = notes.indexOfFirst { it.id == deletedId }
+        if (deletedIndex == -1) return resolve(null, notes)
+        return notes.getOrNull(deletedIndex + 1)?.id
+            ?: notes.getOrNull(deletedIndex - 1)?.id
     }
 }

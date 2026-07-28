@@ -19,13 +19,17 @@ object AppSpacing {
 
     // Component-specific
     val listItemHorizontal = 8.dp
-    val listItemVertical = 6.dp
+    val listItemVertical = 5.dp
     val editorPadding = 16.dp
     val sidebarWidth = 260.dp
     val settingsWidth = 300.dp
-    val toolbarIconSize = 32.dp
-    val segmentedButtonWidth = 180.dp
-    val searchFieldHeight = 46.dp
+    val titleBarHeight = 54.dp
+    val editorHeaderHeight = 54.dp
+    val statusBarHeight = 30.dp
+    val toolbarHeight = 36.dp
+    val toolbarIconSize = 28.dp
+    val segmentedButtonWidth = 176.dp
+    val searchFieldHeight = 42.dp
     val iconButtonSmall = 28.dp
     val iconButtonMedium = 32.dp
     val dividerHeight = 1.dp

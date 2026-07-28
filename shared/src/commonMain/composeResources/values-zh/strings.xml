@@ -1,7 +1,9 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Notecraft</string>
-    <string name="note_list_title">Notecraft (%d)</string>
+    <string name="app_brand_name">笺造</string>
+    <string name="app_name">笺造 · Notecraft</string>
+    <string name="notes_count">%d 篇笔记</string>
+    <string name="note_list_title">%d 篇笔记</string>
     <string name="search_notes">搜索笔记…</string>
     <string name="new_note">+ 新建笔记</string>
     <string name="import">导入</string>

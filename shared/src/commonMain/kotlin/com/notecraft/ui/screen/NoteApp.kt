@@ -42,7 +42,9 @@ fun NoteApp(
     noteRepository: NoteRepository,
     settingsRepository: SettingsRepository,
     fileDialogService: FileDialogService? = null,
-    onToggleTile: ((String) -> Unit)? = null
+    onToggleTile: ((String) -> Unit)? = null,
+    onCurrentNoteTitleChange: (String?) -> Unit = {},
+    desktopTitleBar: (@Composable () -> Unit)? = null
 ) {
     val listViewModel: NoteListViewModel = viewModel { NoteListViewModel(noteRepository) }
     val editorViewModel: NoteEditorViewModel = viewModel { NoteEditorViewModel(noteRepository) }
@@ -65,6 +67,11 @@ fun NoteApp(
     LaunchedEffect(listState.selectedNoteId) {
         listState.selectedNoteId?.let { id -> editorViewModel.loadNote(id) }
             ?: editorViewModel.clearEditor()
+    }
+    LaunchedEffect(editorState.noteId, editorState.title) {
+        onCurrentNoteTitleChange(
+            editorState.noteId?.let { editorState.title.ifBlank { Strings.currentNotePlaceholder } }
+        )
     }
 
     showDeleteConfirm?.let { noteId ->
@@ -92,14 +99,16 @@ fun NoteApp(
     val currentFontSize = settingsState.config.fontSize
     NotecraftTheme(darkTheme = isDarkTheme, fontSize = currentFontSize) {
         Surface(modifier = Modifier.fillMaxSize()) {
-            Box(
-                modifier = Modifier.fillMaxSize().onKeyEvent { event ->
-                    if (event.type == KeyEventType.KeyUp && event.isCtrlPressed && event.key == Key.S) {
-                        editorViewModel.save(); true
-                    } else false
-                }
-            ) {
-                Row(modifier = Modifier.fillMaxSize()) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                desktopTitleBar?.invoke()
+                Box(
+                    modifier = Modifier.weight(1f).fillMaxWidth().onKeyEvent { event ->
+                        if (event.type == KeyEventType.KeyUp && event.isCtrlPressed && event.key == Key.S) {
+                            editorViewModel.save(); true
+                        } else false
+                    }
+                ) {
+                    Row(modifier = Modifier.fillMaxSize()) {
                     NoteListPanel(
                         state = listState,
                         onCreateNote = { editorViewModel.saveAndContinue { listViewModel.createNote() } },
@@ -134,6 +143,7 @@ fun NoteApp(
                             modifier = Modifier.weight(1f).fillMaxHeight()
                         )
                     }
+                    }
                 }
             }
         }
@@ -161,8 +171,14 @@ fun NoteListPanel(
         Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically) {
-            Text(Strings.noteListTitle(state.filteredNotes.size),
-                style = MaterialTheme.typography.titleMedium)
+            Column {
+                Text(Strings.appBrandName, style = MaterialTheme.typography.titleMedium)
+                Text(
+                    Strings.notesCount(state.notes.size),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
             IconButton(
                 onClick = onSettingsClick,
                 modifier = Modifier.size(AppSpacing.iconButtonSmall)

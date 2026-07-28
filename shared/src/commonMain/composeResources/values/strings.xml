@@ -1,7 +1,9 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Notecraft</string>
-    <string name="note_list_title">Notecraft (%d)</string>
+    <string name="app_brand_name">Jianzao</string>
+    <string name="app_name">Jianzao · Notecraft</string>
+    <string name="notes_count">%d notes</string>
+    <string name="note_list_title">%d notes</string>
     <string name="search_notes">Search notes...</string>
     <string name="new_note">+ New Note</string>
     <string name="import">Import</string>

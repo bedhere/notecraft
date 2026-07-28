@@ -2,13 +2,10 @@ package com.notecraft.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.dp
 
 private val LightColors = lightColorScheme(
     primary = AppColors.primaryLight,
@@ -40,12 +37,6 @@ private val DarkColors = darkColorScheme(
     error = AppColors.errorDark
 )
 
-private val AppShapes = Shapes(
-    small = androidx.compose.foundation.shape.RoundedCornerShape(4.dp),
-    medium = androidx.compose.foundation.shape.RoundedCornerShape(6.dp),
-    large = androidx.compose.foundation.shape.RoundedCornerShape(8.dp)
-)
-
 @Composable
 fun NotecraftTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
@@ -55,7 +46,7 @@ fun NotecraftTheme(
     val typography = remember(fontSize) { AppTypography.toMaterial3(fontSize) }
     MaterialTheme(
         colorScheme = if (darkTheme) DarkColors else LightColors,
-        shapes = AppShapes,
+        shapes = AppShapes.material,
         typography = typography,
         content = content
     )
