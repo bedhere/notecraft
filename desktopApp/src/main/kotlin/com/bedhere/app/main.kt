@@ -1,4 +1,4 @@
-package com.bedhere.app
+﻿package com.bedhere.app
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -48,6 +48,7 @@ fun main() = application {
     val windowVisible = mutableStateOf(true)
     val tileNoteIds = mutableStateListOf<String>()
     var currentNoteTitle by remember { mutableStateOf<String?>(null) }
+    val settingsToggleSignal = mutableStateOf(0)
 
     // Shortcut manager
     val shortcutMgr = ShortcutManager(
@@ -128,9 +129,11 @@ fun main() = application {
                         windowState = windowState,
                         currentNoteTitle = currentNoteTitle,
                         onMinimize = { windowState.isMinimized = true },
+                        onSettingsClick = { settingsToggleSignal.value++ },
                         onClose = requestClose
                     )
                 },
+                settingsToggleSignal = settingsToggleSignal,
                 onToggleTile = { noteId ->
                     if (noteId in tileNoteIds) tileNoteIds.remove(noteId)
                     else tileNoteIds.add(noteId)
@@ -139,3 +142,5 @@ fun main() = application {
         }
     }
 }
+
+

@@ -47,6 +47,7 @@ fun DesktopTitleBar(
     windowState: WindowState,
     currentNoteTitle: String?,
     onMinimize: () -> Unit,
+    onSettingsClick: () -> Unit,
     onClose: () -> Unit
 ) {
     val toggleMaximize = {
@@ -113,6 +114,11 @@ fun DesktopTitleBar(
             verticalAlignment = Alignment.CenterVertically
         ) {
             WindowButton(
+                label = "Settings",
+                icon = SettingsIcon,
+                onClick = onSettingsClick
+            )
+            WindowButton(
                 label = "Minimize",
                 icon = MinimizeIcon,
                 onClick = onMinimize
@@ -174,6 +180,32 @@ private val RestoreIcon: @Composable (Color) -> Unit = { color ->
             size = Size(size.width * 0.6f, size.height * 0.6f),
             style = Stroke(width = 1.8f)
         )
+    }
+}
+
+private val SettingsIcon: @Composable (Color) -> Unit = { color ->
+    Canvas(modifier = Modifier.size(14.dp)) {
+        val cx = size.width / 2f
+        val cy = size.height / 2f
+        val outerR = size.minDimension / 2f * 0.85f
+        val innerR = outerR * 0.6f
+        // Gear outer ring
+        drawCircle(color = color, radius = outerR, style = Stroke(width = 1.6f))
+        // Inner hole
+        drawCircle(color = color, radius = innerR * 0.45f, style = Stroke(width = 1.6f))
+        // 6 teeth
+        val toothOuter = size.minDimension / 2f * 0.98f
+        val toothInner = outerR * 0.82f
+        for (i in 0 until 6) {
+            val angle = (i * 60.0)
+            val rad = angle * kotlin.math.PI / 180.0
+            val cos = kotlin.math.cos(rad).toFloat()
+            val sin = kotlin.math.sin(rad).toFloat()
+            drawLine(color = color,
+                start = Offset(cx + cos * toothInner, cy + sin * toothInner),
+                end = Offset(cx + cos * toothOuter, cy + sin * toothOuter),
+                strokeWidth = 2.8f)
+        }
     }
 }
 
@@ -258,3 +290,4 @@ private fun CloseButton(
         )
     }
 }
+
