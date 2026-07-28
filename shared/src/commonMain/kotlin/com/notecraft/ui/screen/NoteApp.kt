@@ -18,16 +18,19 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -42,6 +45,8 @@ import com.notecraft.domain.repository.NoteRepository
 import com.notecraft.domain.repository.SettingsRepository
 import com.notecraft.presentation.note.*
 import com.notecraft.presentation.settings.SettingsViewModel
+import com.notecraft.ui.editor.MarkdownFormat
+import com.notecraft.ui.editor.MarkdownFormatting
 import com.notecraft.ui.markdown.MarkdownContent
 import com.notecraft.ui.theme.NotecraftTheme
 import com.notecraft.ui.theme.AppComponentDefaults
@@ -552,6 +557,24 @@ fun EditorPanel(
     modifier: Modifier = Modifier
 ) {
     val focusManager = LocalFocusManager.current
+    var contentValue by remember(state.noteId) {
+        mutableStateOf(TextFieldValue(state.content))
+    }
+
+    LaunchedEffect(state.noteId, state.content) {
+        if (contentValue.text != state.content) {
+            val selection = TextRange(
+                contentValue.selection.start.coerceIn(0, state.content.length),
+                contentValue.selection.end.coerceIn(0, state.content.length)
+            )
+            contentValue = TextFieldValue(state.content, selection = selection)
+        }
+    }
+
+    val onContentValueChange: (TextFieldValue) -> Unit = { value ->
+        contentValue = value
+        onContentChange(value.text)
+    }
 
     Column(modifier = modifier.padding(AppSpacing.editorPadding)) {
         if (state.noteId == null) {
@@ -577,7 +600,14 @@ fun EditorPanel(
         Spacer(Modifier.height(AppSpacing.md))
         when (state.viewMode) {
             ViewMode.EDIT -> {
-                EditorFields(state, onTitleChange, onContentChange, titleFocusRequester, focusManager)
+                EditorFields(
+                    state = state,
+                    contentValue = contentValue,
+                    onContentValueChange = onContentValueChange,
+                    onTitleChange = onTitleChange,
+                    titleFocusRequester = titleFocusRequester,
+                    focusManager = focusManager
+                )
             }
             ViewMode.PREVIEW -> {
                 Column(modifier = Modifier.fillMaxSize()) {
@@ -587,18 +617,18 @@ fun EditorPanel(
             ViewMode.SPLIT -> {
                 Row(modifier = Modifier.fillMaxSize()) {
                     Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
-                        MarkdownToolbar(
-                            content = state.content,
-                            onContentChange = onContentChange
-                        )
                         OutlinedTextField(value = state.title, onValueChange = onTitleChange,
                             label = { Text(Strings.editorTitle) }, singleLine = true,
                             modifier = Modifier.fillMaxWidth().focusRequester(titleFocusRequester),
                             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next))
                         Spacer(Modifier.height(AppSpacing.md))
-                        OutlinedTextField(value = state.content, onValueChange = onContentChange,
+                        MarkdownToolbar(
+                            value = contentValue,
+                            onValueChange = onContentValueChange
+                        )
+                        OutlinedTextField(value = contentValue, onValueChange = onContentValueChange,
                             label = { Text(Strings.editorContent) },
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier.fillMaxWidth().weight(1f),
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text))
                     }
                     VerticalDivider(modifier = Modifier.fillMaxHeight())
@@ -825,15 +855,12 @@ private fun SaveStateLabel(saveState: SaveState) {
 @Composable
 private fun ColumnScope.EditorFields(
     state: NoteEditorState,
+    contentValue: TextFieldValue,
+    onContentValueChange: (TextFieldValue) -> Unit,
     onTitleChange: (String) -> Unit,
-    onContentChange: (String) -> Unit,
     titleFocusRequester: FocusRequester,
     focusManager: androidx.compose.ui.focus.FocusManager
 ) {
-    MarkdownToolbar(
-        content = state.content,
-        onContentChange = onContentChange
-    )
     OutlinedTextField(value = state.title, onValueChange = onTitleChange,
         label = { Text(Strings.editorTitle) }, singleLine = true,
         modifier = Modifier.fillMaxWidth().focusRequester(titleFocusRequester).onKeyEvent { event ->
@@ -842,10 +869,10 @@ private fun ColumnScope.EditorFields(
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next))
     Spacer(Modifier.height(AppSpacing.lg))
     MarkdownToolbar(
-        content = state.content,
-        onContentChange = onContentChange
+        value = contentValue,
+        onValueChange = onContentValueChange
     )
-    OutlinedTextField(value = state.content, onValueChange = onContentChange,
+    OutlinedTextField(value = contentValue, onValueChange = onContentValueChange,
         label = { Text(Strings.editorContent) },
         modifier = Modifier.fillMaxWidth().weight(1f),
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text))
@@ -853,27 +880,42 @@ private fun ColumnScope.EditorFields(
 
 @Composable
 private fun MarkdownToolbar(
-    content: String,
-    onContentChange: (String) -> Unit
+    value: TextFieldValue,
+    onValueChange: (TextFieldValue) -> Unit
 ) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
         horizontalArrangement = Arrangement.Start
     ) {
         val buttons = listOf(
-            "B" to { "**" + content + "**" },
-            "I" to { "*" + content + "*" },
-            "H" to { "# " + content },
-            "—" to { content + "\n---\n" },
-            "•" to { content + "\n- " },
-            "1." to { content + "\n1. " },
-            "<>" to { "```\n" + content + "\n```" },
-            "❝" to { content + "\n> " }
+            "B" to MarkdownFormat.BOLD,
+            "I" to MarkdownFormat.ITALIC,
+            "H1" to MarkdownFormat.HEADING,
+            "---" to MarkdownFormat.THEMATIC_BREAK,
+            "- " to MarkdownFormat.BULLET_LIST,
+            "1. " to MarkdownFormat.ORDERED_LIST,
+            "```" to MarkdownFormat.CODE_BLOCK,
+            "> " to MarkdownFormat.BLOCKQUOTE
         )
-        buttons.forEach { (label, transform) ->
+        buttons.forEach { (label, format) ->
             TextButton(
-                onClick = { onContentChange(transform()) },
-                modifier = Modifier.height(30.dp),
+                onClick = {
+                    val result = MarkdownFormatting.apply(
+                        text = value.text,
+                        selectionStart = value.selection.start,
+                        selectionEnd = value.selection.end,
+                        format = format
+                    )
+                    onValueChange(
+                        TextFieldValue(
+                            text = result.text,
+                            selection = TextRange(result.selectionStart, result.selectionEnd)
+                        )
+                    )
+                },
+                modifier = Modifier
+                    .height(30.dp)
+                    .focusProperties { canFocus = false },
                 contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp)
             ) {
                 Text(label, fontSize = 13.sp, fontWeight = FontWeight.Bold)
