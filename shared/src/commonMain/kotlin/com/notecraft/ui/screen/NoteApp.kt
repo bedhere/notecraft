@@ -99,16 +99,29 @@ fun NoteApp(
     }
 
     showDeleteConfirm?.let { noteId ->
+        val deleteFocusRequester = remember(noteId) { FocusRequester() }
+        LaunchedEffect(noteId) {
+            deleteFocusRequester.requestFocus()
+        }
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = null },
-            title = { Text(Strings.deleteTitle) },
+            title = { Text(Strings.deleteConfirmTitle) },
             text = { Text(Strings.deleteMessage) },
             confirmButton = {
-                TextButton(onClick = {
-                    showDeleteConfirm = null
-                    if (noteId == listState.selectedNoteId) editorViewModel.clearEditor()
-                    listViewModel.deleteNote(noteId)
-                }) { Text(Strings.deleteConfirm, color = MaterialTheme.colorScheme.error) }
+                Button(
+                    onClick = {
+                        showDeleteConfirm = null
+                        if (noteId == listState.selectedNoteId) editorViewModel.clearEditor()
+                        listViewModel.deleteNote(noteId)
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError
+                    ),
+                    modifier = Modifier.focusRequester(deleteFocusRequester)
+                ) {
+                    Text(Strings.deleteConfirm)
+                }
             },
             dismissButton = { TextButton(onClick = { showDeleteConfirm = null }) { Text(Strings.cancel) } }
         )
@@ -167,6 +180,8 @@ fun NoteApp(
                             onFontSizeChange = { settingsViewModel.updateFontSize(it) },
                             onTabIndentChange = { settingsViewModel.updateTabIndentSize(it) },
                             onAutoSaveChange = { settingsViewModel.updateNoteAutoSave(it) },
+                            onCloseToTrayChange = { settingsViewModel.updateCloseToTray(it) },
+                            onClose = { settingsViewModel.close() },
                             modifier = Modifier.weight(1f).fillMaxHeight()
                         )
                     } else {
@@ -408,7 +423,8 @@ fun NoteListPanel(
                             onClick = {
                                 selectedIdx = state.filteredNotes.indexOfFirst { it.id == note.id }
                                 onSelectNote(note.id)
-                            }
+                            },
+                            onDelete = { onDeleteNote(note.id) }
                         )
                     }
                 }
@@ -446,11 +462,13 @@ private fun SidebarAction(
 private fun NoteListItem(
     note: com.notecraft.domain.model.NoteMetadata,
     isSelected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onDelete: () -> Unit
 ) {
     val interactionSource = remember(note.id) { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
     var isFocused by remember(note.id) { mutableStateOf(false) }
+    var menuExpanded by remember(note.id) { mutableStateOf(false) }
     val displayTitle = note.title.ifBlank { Strings.untitled }
     val itemColor = when {
         isSelected -> MaterialTheme.colorScheme.primaryContainer
@@ -489,7 +507,9 @@ private fun NoteListItem(
                 )
         )
         Column(
-            modifier = Modifier.padding(start = AppSpacing.md, top = AppSpacing.sm, bottom = AppSpacing.sm)
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = AppSpacing.md, top = AppSpacing.sm, bottom = AppSpacing.sm)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -509,6 +529,37 @@ private fun NoteListItem(
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                Box {
+                    IconButton(
+                        onClick = { menuExpanded = true },
+                        modifier = Modifier
+                            .size(AppSpacing.iconButtonSmall)
+                            .semantics { contentDescription = Strings.moreActions }
+                    ) {
+                        Text(
+                            text = "...",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = menuExpanded,
+                        onDismissRequest = { menuExpanded = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    text = Strings.deleteConfirm,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            },
+                            onClick = {
+                                menuExpanded = false
+                                onDelete()
+                            }
+                        )
+                    }
+                }
             }
             if (note.preview.isNotBlank()) {
                 Text(

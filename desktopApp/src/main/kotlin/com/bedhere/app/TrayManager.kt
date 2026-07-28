@@ -5,13 +5,11 @@ import com.notecraft.data.repository.SettingsRepositoryImpl
 import com.notecraft.storage.JvmSettingsStorage
 import java.awt.*
 import java.awt.image.BufferedImage
-import java.io.File
 import kotlinx.coroutines.runBlocking
 
 class TrayManager(
     private val dataDir: String,
     private val onShowMain: () -> Unit,
-    private val onQuickNote: () -> Unit,
     private val onQuit: () -> Unit
 ) {
     private var trayIcon: TrayIcon? = null
@@ -70,12 +68,6 @@ class TrayManager(
         val showItem = MenuItem(Strings.trayShow)
         showItem.addActionListener { onShowMain() }
         menu.add(showItem)
-
-        val noteItem = MenuItem(Strings.trayQuickNote)
-        noteItem.addActionListener { onQuickNote() }
-        menu.add(noteItem)
-
-        menu.addSeparator()
 
         val trayItem = CheckboxMenuItem(Strings.trayCloseToTray)
         trayItem.state = closeToTray

@@ -50,7 +50,7 @@
     <string name="import_failed">导入失败</string>
     <string name="export_failed">导出失败</string>
     <string name="load_failed">加载失败</string>
-    <string name="tray_show">显示笔记工坊</string>
+    <string name="tray_show">显示笺造 · Notecraft</string>
     <string name="tray_quick_note">快速笔记</string>
     <string name="tray_close_to_tray">关闭到托盘</string>
     <string name="tray_quit">退出</string>

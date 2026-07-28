@@ -70,7 +70,6 @@ fun main() = application {
     tray = TrayManager(
         dataDir = dataDir,
         onShowMain = { windowVisible.value = true },
-        onQuickNote = { },
         onQuit = {
             tray.dispose()
             exitApplication()

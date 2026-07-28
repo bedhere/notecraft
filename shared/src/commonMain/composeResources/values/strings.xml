@@ -50,7 +50,7 @@
     <string name="import_failed">Import failed</string>
     <string name="export_failed">Export failed</string>
     <string name="load_failed">Failed to load</string>
-    <string name="tray_show">Show Notecraft</string>
+    <string name="tray_show">Show Jianzao · Notecraft</string>
     <string name="tray_quick_note">Quick Note</string>
     <string name="tray_close_to_tray">Close to Tray</string>
     <string name="tray_quit">Quit</string>

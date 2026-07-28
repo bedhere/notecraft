@@ -57,6 +57,12 @@ class SettingsViewModel(
         save(updated)
     }
 
+    fun updateCloseToTray(enabled: Boolean) {
+        val updated = _state.value.config.copy(closeToTray = enabled)
+        _state.value = _state.value.copy(config = updated)
+        save(updated)
+    }
+
     fun updateLocale(locale: String) {
         val updated = _state.value.config.copy(locale = locale)
         _state.value = _state.value.copy(config = updated)
