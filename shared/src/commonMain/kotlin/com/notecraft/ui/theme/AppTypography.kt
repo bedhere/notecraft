@@ -98,17 +98,22 @@ object AppTypography {
     fun toMaterial3(fontSize: Int = 14): Typography {
         val scale = fontSize / 14f
         return Typography(
-            displayLarge = displayLarge.copy(fontSize = (displayLarge.fontSize.value * scale).sp),
-            displayMedium = displayMedium.copy(fontSize = (displayMedium.fontSize.value * scale).sp),
-            headlineLarge = headingLarge.copy(fontSize = (headingLarge.fontSize.value * scale).sp),
-            headlineMedium = headingMedium.copy(fontSize = (headingMedium.fontSize.value * scale).sp),
-            headlineSmall = headingSmall.copy(fontSize = (headingSmall.fontSize.value * scale).sp),
-            bodyLarge = bodyLarge.copy(fontSize = (bodyLarge.fontSize.value * scale).sp),
-            bodyMedium = bodyMedium.copy(fontSize = (bodyMedium.fontSize.value * scale).sp),
-            bodySmall = bodySmall.copy(fontSize = (bodySmall.fontSize.value * scale).sp),
-            labelLarge = labelLarge.copy(fontSize = (labelLarge.fontSize.value * scale).sp),
-            labelMedium = labelMedium.copy(fontSize = (labelMedium.fontSize.value * scale).sp),
-            labelSmall = labelSmall.copy(fontSize = (labelSmall.fontSize.value * scale).sp)
+            displayLarge = displayLarge.scaled(scale),
+            displayMedium = displayMedium.scaled(scale),
+            headlineLarge = headingLarge.scaled(scale),
+            headlineMedium = headingMedium.scaled(scale),
+            headlineSmall = headingSmall.scaled(scale),
+            bodyLarge = bodyLarge.scaled(scale),
+            bodyMedium = bodyMedium.scaled(scale),
+            bodySmall = bodySmall.scaled(scale),
+            labelLarge = labelLarge.scaled(scale),
+            labelMedium = labelMedium.scaled(scale),
+            labelSmall = labelSmall.scaled(scale)
         )
     }
+
+    private fun TextStyle.scaled(scale: Float) = copy(
+        fontSize = (fontSize.value * scale).sp,
+        lineHeight = (lineHeight.value * scale).sp
+    )
 }

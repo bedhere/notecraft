@@ -2,6 +2,9 @@ param(
     [int]$WaitSeconds = 12,
     [string]$OutputDirectory = "build/verification/screenshots",
     [string]$JavaHome = "",
+    [string]$WindowTitleContains = "Notecraft",
+    [int]$WindowWidth = 0,
+    [int]$WindowHeight = 0,
     [switch]$KeepOpen
 )
 
@@ -46,6 +49,9 @@ if ($javaVersionOutput -notmatch 'version "21(?:[."]|$)') {
     throw "JDK 21 is required. Detected: $($javaVersionOutput.Trim())"
 }
 
+Add-Type -AssemblyName System.Drawing
+Add-Type -AssemblyName System.Windows.Forms
+
 Add-Type @"
 using System;
 using System.Drawing;
@@ -69,6 +75,12 @@ public static class DesktopScreenshotNative
 
     [DllImport("user32.dll")]
     public static extern bool SetForegroundWindow(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+    [DllImport("user32.dll")]
+    public static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
 
     [DllImport("user32.dll")]
     public static extern bool IsWindowVisible(IntPtr hWnd);
@@ -117,6 +129,32 @@ public static class DesktopScreenshotNative
 
 $existingWindowHandles = @([DesktopScreenshotNative]::GetVisibleWindowsWithTitles())
 
+function Stop-ProcessTree {
+    param([int]$ProcessId)
+
+    $children = Get-CimInstance Win32_Process -Filter "ParentProcessId = $ProcessId" -ErrorAction SilentlyContinue
+    foreach ($child in $children) {
+        Stop-ProcessTree -ProcessId $child.ProcessId
+    }
+    Stop-Process -Id $ProcessId -Force -ErrorAction SilentlyContinue
+}
+
+function Get-ProcessTreeIds {
+    param([int]$ProcessId)
+
+    $ids = New-Object System.Collections.Generic.List[int]
+    $ids.Add($ProcessId)
+    $children = Get-CimInstance Win32_Process -Filter "ParentProcessId = $ProcessId" -ErrorAction SilentlyContinue
+    foreach ($child in $children) {
+        foreach ($childId in (Get-ProcessTreeIds -ProcessId $child.ProcessId)) {
+            if (-not $ids.Contains($childId)) {
+                $ids.Add($childId)
+            }
+        }
+    }
+    return $ids.ToArray()
+}
+
 $startInfo = New-Object System.Diagnostics.ProcessStartInfo
 $startInfo.FileName = $env:ComSpec
 $startInfo.Arguments = "/d /c call `"$gradleWrapper`" :desktopApp:run --no-daemon --console=plain > `"$logPath`" 2>&1"
@@ -134,24 +172,46 @@ try {
     $deadline = (Get-Date).AddSeconds($WaitSeconds)
     while ((Get-Date) -lt $deadline -and $windowHandle -eq [IntPtr]::Zero) {
         Start-Sleep -Milliseconds 500
-        $windowHandle = @([DesktopScreenshotNative]::GetVisibleWindowsWithTitles()) |
-            Where-Object { $_ -notin $existingWindowHandles } |
-            Select-Object -First 1
+        $launchedProcessIds = @(Get-ProcessTreeIds -ProcessId $launcher.Id)
+        $matchingWindows = @(
+            @([DesktopScreenshotNative]::GetVisibleWindowsWithTitles()) |
+                Where-Object {
+                    $launchedProcessIds -contains [DesktopScreenshotNative]::GetProcessId($_) -and
+                    [DesktopScreenshotNative]::GetTitle($_) -like "*$WindowTitleContains*"
+                }
+        )
+
+        $windowHandle = @(
+            $matchingWindows |
+                Where-Object { $_ -notin $existingWindowHandles }
+        ) | Select-Object -First 1
+
         if ($null -eq $windowHandle) {
             $windowHandle = [IntPtr]::Zero
         }
     }
 
-    if ($windowHandle -eq [IntPtr]::Zero) {
+    if ($null -eq $windowHandle -or $windowHandle -eq [IntPtr]::Zero) {
         if ($launcher.HasExited) {
             throw "Desktop app did not start. See log: $logPath"
         }
         throw "Desktop window was not detected within $WaitSeconds seconds. Run this script from an interactive Windows desktop session. See log: $logPath"
     }
 
+    $startedWindow = $windowHandle -notin $existingWindowHandles
     $windowProcessId = [DesktopScreenshotNative]::GetProcessId($windowHandle)
     $windowProcess = Get-Process -Id $windowProcessId -ErrorAction SilentlyContinue
 
+    $hwndTopmost = [IntPtr]::new(-1)
+    $hwndNotTopmost = [IntPtr]::new(-2)
+    $swRestore = 9
+    $swpNoSize = 0x0001
+    $swpNoMove = 0x0002
+    $swpShowWindow = 0x0040
+    $setWindowFlags = [uint32]($swpNoSize -bor $swpNoMove -bor $swpShowWindow)
+
+    [void][DesktopScreenshotNative]::ShowWindow($windowHandle, $swRestore)
+    [void][DesktopScreenshotNative]::SetWindowPos($windowHandle, $hwndTopmost, 0, 0, 0, 0, $setWindowFlags)
     [void][DesktopScreenshotNative]::SetForegroundWindow($windowHandle)
     Start-Sleep -Milliseconds 500
 
@@ -165,6 +225,26 @@ try {
     if ($width -lt 200 -or $height -lt 120) {
         throw "Desktop window bounds are too small: ${width}x${height}"
     }
+
+    $workingArea = [System.Windows.Forms.Screen]::FromHandle($windowHandle).WorkingArea
+    $margin = 20
+    $requestedWidth = if ($WindowWidth -gt 0) { $WindowWidth } else { $width }
+    $requestedHeight = if ($WindowHeight -gt 0) { $WindowHeight } else { $height }
+    $targetWidth = [Math]::Min($requestedWidth, [Math]::Max(200, $workingArea.Width - ($margin * 2)))
+    $targetHeight = [Math]::Min($requestedHeight, [Math]::Max(120, $workingArea.Height - ($margin * 2)))
+    $targetX = $workingArea.Left + $margin
+    $targetY = $workingArea.Top + $margin
+    [void][DesktopScreenshotNative]::SetWindowPos($windowHandle, $hwndTopmost, $targetX, $targetY, $targetWidth, $targetHeight, $swpShowWindow)
+    [void][DesktopScreenshotNative]::SetForegroundWindow($windowHandle)
+    Start-Sleep -Milliseconds 700
+
+    if (-not [DesktopScreenshotNative]::GetWindowRect($windowHandle, [ref]$rect)) {
+        throw "Could not read the Desktop window bounds after repositioning."
+    }
+
+    $width = $rect.Right - $rect.Left
+    $height = $rect.Bottom - $rect.Top
+    [void][DesktopScreenshotNative]::SetWindowPos($windowHandle, $hwndNotTopmost, 0, 0, 0, 0, $setWindowFlags)
 
     $bitmap = New-Object System.Drawing.Bitmap($width, $height)
     try {
@@ -194,11 +274,11 @@ try {
     }
 } finally {
     if (-not $KeepOpen) {
-        if ($windowProcess -and -not $windowProcess.HasExited) {
+        if ($startedWindow -and $windowProcess -and -not $windowProcess.HasExited) {
             Stop-Process -Id $windowProcess.Id -Force -ErrorAction SilentlyContinue
         }
         if ($launcher -and -not $launcher.HasExited) {
-            Stop-Process -Id $launcher.Id -Force -ErrorAction SilentlyContinue
+            Stop-ProcessTree -ProcessId $launcher.Id
         }
     }
 }

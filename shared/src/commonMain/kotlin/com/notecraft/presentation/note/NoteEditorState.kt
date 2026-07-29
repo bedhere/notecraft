@@ -17,7 +17,7 @@ data class NoteEditorState(
     val updatedAt: Long? = null,
     val saveState: SaveState = SaveState.Idle,
     val wordCount: Int = 0,
-    val viewMode: ViewMode = ViewMode.EDIT,
+    val viewMode: ViewMode = ViewMode.SPLIT,
     val canUndo: Boolean = false,
     val canRedo: Boolean = false
 )

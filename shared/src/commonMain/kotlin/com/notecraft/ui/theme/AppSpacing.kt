@@ -36,7 +36,7 @@ object AppSpacing {
     val toolbarHeight = 36.dp
     val toolbarIconSize = 28.dp
     val segmentedButtonWidth = 176.dp
-    val searchFieldHeight = 42.dp
+    val searchFieldHeight = 56.dp
     val iconButtonSmall = 28.dp
     val iconButtonMedium = 32.dp
     val splitCollapseWidth = 760.dp
