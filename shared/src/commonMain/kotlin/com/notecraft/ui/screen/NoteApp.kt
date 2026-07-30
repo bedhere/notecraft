@@ -11,6 +11,7 @@ import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -23,7 +24,6 @@ import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextRange
@@ -51,7 +51,6 @@ import com.notecraft.ui.editor.MarkdownFormat
 import com.notecraft.ui.editor.MarkdownFormatting
 import com.notecraft.ui.markdown.MarkdownContent
 import com.notecraft.ui.theme.NotecraftTheme
-import com.notecraft.ui.theme.AppComponentDefaults
 import com.notecraft.ui.theme.AppShapes
 import com.notecraft.ui.theme.AppSpacing
 import com.notecraft.util.Strings
@@ -60,6 +59,7 @@ import com.notecraft.util.NoteUtils
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.drawscope.Stroke
 import kotlinx.coroutines.launch
 
@@ -170,7 +170,7 @@ fun NoteApp(
                         } else {
                             AppSpacing.editorPadding
                         }
-                        val topSectionHeight = maxHeight * 23f / 80f
+                        val topSectionHeight = (maxHeight * 0.25f).coerceIn(176.dp, 204.dp)
 
                         Row(modifier = Modifier.fillMaxSize()) {
                             if (showSidebar) {
@@ -196,7 +196,6 @@ fun NoteApp(
                                             scope.launch { importExport.exportMarkdownFile(nid) }
                                         }
                                     },
-                                    topSectionHeight = topSectionHeight,
                                     modifier = Modifier.width(sidebarWidth).fillMaxHeight()
                                 )
                                 VerticalDivider()
@@ -249,7 +248,6 @@ fun NoteListPanel(
     onSettingsClick: () -> Unit,
     onImport: () -> Unit,
     onExport: () -> Unit,
-    topSectionHeight: androidx.compose.ui.unit.Dp,
     modifier: Modifier = Modifier
 ) {
     var selectedIdx by remember(state.selectedNoteId, state.filteredNotes) {
@@ -258,41 +256,62 @@ fun NoteListPanel(
 
     Surface(modifier = modifier, color = MaterialTheme.colorScheme.surfaceVariant) {
         Column(
-            modifier = Modifier.fillMaxSize().padding(horizontal = AppSpacing.lg, vertical = AppSpacing.lg)
+            modifier = Modifier.fillMaxSize().padding(horizontal = 14.dp, vertical = AppSpacing.lg)
         ) {
-            Column(modifier = Modifier.fillMaxWidth().height(topSectionHeight)) {
-                OutlinedTextField(
-                    value = state.searchQuery,
-                    onValueChange = onSearchQueryChange,
-                    placeholder = { Text(Strings.searchNotes, style = MaterialTheme.typography.bodySmall) },
-                    singleLine = true,
-                    shape = AppShapes.control,
-                    modifier = Modifier.fillMaxWidth().height(AppSpacing.searchFieldHeight),
-                    textStyle = MaterialTheme.typography.bodySmall,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = MaterialTheme.colorScheme.surface,
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                        disabledContainerColor = MaterialTheme.colorScheme.surface,
-                        focusedBorderColor = MaterialTheme.colorScheme.outline,
-                        unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-                        focusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f),
-                        unfocusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f)
-                    ),
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                    trailingIcon = if (state.searchQuery.isNotBlank()) {
-                        {
-                            IconButton(
-                                onClick = { onSearchQueryChange("") },
-                                modifier = Modifier.size(AppSpacing.iconButtonSmall)
-                            ) {
-                                Text("x", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(AppSpacing.searchFieldHeight)
+                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.74f), AppShapes.control)
+                        .border(
+                            width = 1.dp,
+                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.78f),
+                            shape = AppShapes.control
+                        )
+                        .padding(horizontal = AppSpacing.lg),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "⌕",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.62f)
+                    )
+                    Spacer(Modifier.width(AppSpacing.md))
+                    BasicTextField(
+                        value = state.searchQuery,
+                        onValueChange = onSearchQueryChange,
+                        singleLine = true,
+                        textStyle = MaterialTheme.typography.bodySmall.copy(
+                            color = MaterialTheme.colorScheme.onSurface
+                        ),
+                        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                        modifier = Modifier.weight(1f),
+                        decorationBox = { innerTextField ->
+                            Box {
+                                if (state.searchQuery.isBlank()) {
+                                    Text(
+                                        text = Strings.searchNotes,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.58f)
+                                    )
+                                }
+                                innerTextField()
                             }
                         }
-                    } else {
-                        null
+                    )
+                    if (state.searchQuery.isNotBlank()) {
+                        Text(
+                            text = "x",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier
+                                .padding(start = AppSpacing.md)
+                                .clickable { onSearchQueryChange("") }
+                        )
                     }
-                )
-
+                }
                 Spacer(Modifier.height(AppSpacing.md))
 
                 SidebarAction(
@@ -302,7 +321,7 @@ fun NoteListPanel(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Spacer(Modifier.height(AppSpacing.sm))
+                Spacer(Modifier.height(AppSpacing.xs))
 
                 SidebarAction(
                     icon = "\u2193",
@@ -311,7 +330,7 @@ fun NoteListPanel(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Spacer(Modifier.weight(1f))
+                Spacer(Modifier.height(AppSpacing.lg))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -324,25 +343,13 @@ fun NoteListPanel(
                         modifier = Modifier.weight(1f)
                     )
                     TextButton(
-                        onClick = { onSortModeChange(SortMode.RECENTLY_UPDATED) },
-                        contentPadding = AppComponentDefaults.toolbarPadding
+                        onClick = onCreateNote,
+                        contentPadding = PaddingValues(horizontal = AppSpacing.sm, vertical = 0.dp)
                     ) {
                         Text(
-                            text = Strings.recent,
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = if (state.sortMode == SortMode.RECENTLY_UPDATED)
-                                FontWeight.Bold else FontWeight.Normal
-                        )
-                    }
-                    TextButton(
-                        onClick = { onSortModeChange(SortMode.TITLE) },
-                        contentPadding = AppComponentDefaults.toolbarPadding
-                    ) {
-                        Text(
-                            text = Strings.sortByTitle,
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = if (state.sortMode == SortMode.TITLE)
-                                FontWeight.Bold else FontWeight.Normal
+                            text = "+",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                         )
                     }
                 }
@@ -439,7 +446,7 @@ private fun SidebarAction(
 
     Row(
         modifier = modifier
-            .height(AppSpacing.toolbarHeight)
+            .height(32.dp)
             .background(actionColor, AppShapes.control)
             .hoverable(interactionSource, enabled)
             .focusable(enabled)
@@ -482,15 +489,15 @@ private fun NoteListItem(
     var menuExpanded by remember(note.id) { mutableStateOf(false) }
     val displayTitle = note.title.ifBlank { Strings.untitled }
     val itemColor = when {
-        isSelected -> MaterialTheme.colorScheme.primaryContainer
-        isHovered -> MaterialTheme.colorScheme.surface
-        else -> MaterialTheme.colorScheme.surface
+        isSelected -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.88f)
+        isHovered -> MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.5f)
+        else -> Color.Transparent
     }
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 82.dp)
+            .heightIn(min = 86.dp)
             .background(itemColor, AppShapes.control)
             .hoverable(interactionSource)
             .focusable()
@@ -505,13 +512,13 @@ private fun NoteListItem(
                 indication = null,
                 onClick = onClick
             )
-            .padding(end = AppSpacing.lg),
+            .padding(end = AppSpacing.md),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
             modifier = Modifier
                 .width(3.dp)
-                .height(56.dp)
+                .height(22.dp)
                 .background(
                     if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
                     AppShapes.compact
@@ -520,7 +527,7 @@ private fun NoteListItem(
         Column(
             modifier = Modifier
                 .weight(1f)
-                .padding(start = AppSpacing.lg, top = AppSpacing.md, bottom = AppSpacing.md)
+                .padding(start = AppSpacing.lg, top = AppSpacing.sm, bottom = AppSpacing.sm)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -537,39 +544,41 @@ private fun NoteListItem(
                 )
                 Spacer(Modifier.width(AppSpacing.sm))
                 Text(
-                    text = TimeFormat.relativeTime(note.updatedAt),
+                    text = TimeFormat.formatMonthDay(note.updatedAt),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.78f)
                 )
-                Box {
-                    IconButton(
-                        onClick = { menuExpanded = true },
-                        modifier = Modifier
-                            .size(AppSpacing.iconButtonSmall)
-                            .semantics { contentDescription = Strings.moreActions }
-                    ) {
-                        Text(
-                            text = "...",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    DropdownMenu(
-                        expanded = menuExpanded,
-                        onDismissRequest = { menuExpanded = false }
-                    ) {
-                        DropdownMenuItem(
-                            text = {
-                                Text(
-                                    text = Strings.deleteConfirm,
-                                    color = MaterialTheme.colorScheme.error
-                                )
-                            },
-                            onClick = {
-                                menuExpanded = false
-                                onDelete()
-                            }
-                        )
+                if (isHovered) {
+                    Box {
+                        IconButton(
+                            onClick = { menuExpanded = true },
+                            modifier = Modifier
+                                .size(AppSpacing.iconButtonSmall)
+                                .semantics { contentDescription = Strings.moreActions }
+                        ) {
+                            Text(
+                                text = "...",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = menuExpanded,
+                            onDismissRequest = { menuExpanded = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        text = Strings.deleteConfirm,
+                                        color = MaterialTheme.colorScheme.error
+                                    )
+                                },
+                                onClick = {
+                                    menuExpanded = false
+                                    onDelete()
+                                }
+                            )
+                        }
                     }
                 }
             }
@@ -586,7 +595,7 @@ private fun NoteListItem(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = TimeFormat.formatDateTime(note.updatedAt),
+                    text = TimeFormat.formatDateTime(note.updatedAt).substringAfter(' '),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
                     maxLines = 1,
@@ -621,7 +630,6 @@ fun EditorPanel(
     topSectionHeight: androidx.compose.ui.unit.Dp,
     modifier: Modifier = Modifier
 ) {
-    val focusManager = LocalFocusManager.current
     val previewScrollState = remember(state.noteId) { ScrollState(0) }
     var contentValue by remember(state.noteId) {
         mutableStateOf(TextFieldValue(state.content))
@@ -642,7 +650,14 @@ fun EditorPanel(
         onContentChange(value.text)
     }
 
-    Column(modifier = modifier.padding(contentPadding)) {
+    Column(
+        modifier = modifier.padding(
+            start = contentPadding,
+            top = 0.dp,
+            end = AppSpacing.xxl,
+            bottom = 0.dp
+        )
+    ) {
         if (state.noteId == null) {
             Text(Strings.selectNoteHint,
                 style = MaterialTheme.typography.bodyLarge,
@@ -661,9 +676,17 @@ fun EditorPanel(
                 onDelete = onDelete,
                 onViewModeChange = onViewModeChange
             )
-            Spacer(Modifier.height(AppSpacing.lg))
-            EditorNoteHeader(state = state)
-            HorizontalDivider(modifier = Modifier.padding(top = AppSpacing.md))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.72f))
+            Spacer(Modifier.height(AppSpacing.xxl))
+            EditorNoteHeader(
+                state = state,
+                onTitleChange = onTitleChange,
+                titleFocusRequester = titleFocusRequester
+            )
+            HorizontalDivider(
+                modifier = Modifier.padding(top = AppSpacing.md),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.72f)
+            )
             Spacer(Modifier.weight(1f))
             if (state.viewMode != ViewMode.PREVIEW) {
                 MarkdownToolbar(
@@ -678,12 +701,8 @@ fun EditorPanel(
                 ViewMode.EDIT -> {
                     Column(modifier = Modifier.fillMaxSize()) {
                         EditorFields(
-                            state = state,
                             contentValue = contentValue,
                             onContentValueChange = onContentValueChange,
-                            onTitleChange = onTitleChange,
-                            titleFocusRequester = titleFocusRequester,
-                            focusManager = focusManager,
                             showMarkdownToolbar = false
                         )
                     }
@@ -728,7 +747,7 @@ fun EditorPanel(
                 }
             }
         }
-        HorizontalDivider()
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.72f))
         EditorStatusBar(value = contentValue)
     }
 }
@@ -745,7 +764,7 @@ private fun EditorStatusBar(value: TextFieldValue) {
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(min = AppSpacing.statusBarHeight)
-                .padding(horizontal = AppSpacing.lg),
+                .padding(horizontal = AppSpacing.xl),
             verticalAlignment = Alignment.CenterVertically
         ) {
             StatusText(text = "Ln ${cursor.line}", color = labelColor)
@@ -838,7 +857,7 @@ private fun EditorActionBar(
         if (compact) {
             Column(modifier = Modifier.fillMaxWidth().heightIn(min = AppSpacing.toolbarHeight)) {
                 Row(
-                    modifier = Modifier.fillMaxWidth().heightIn(min = AppSpacing.toolbarHeight),
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     EditorActionIcon(
@@ -875,7 +894,6 @@ private fun EditorActionBar(
                     EditorActionIcon(
                         icon = DeleteIcon,
                         label = Strings.deleteConfirm,
-                        tint = MaterialTheme.colorScheme.error,
                         onClick = onDelete
                     )
                 }
@@ -889,7 +907,7 @@ private fun EditorActionBar(
             }
         } else {
             Row(
-                modifier = Modifier.fillMaxWidth().heightIn(min = AppSpacing.toolbarHeight),
+                modifier = Modifier.fillMaxWidth().height(48.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 EditorActionIcon(
@@ -925,7 +943,6 @@ private fun EditorActionBar(
                 EditorActionIcon(
                     icon = DeleteIcon,
                     label = Strings.deleteConfirm,
-                    tint = MaterialTheme.colorScheme.error,
                     onClick = onDelete
                 )
                 Spacer(Modifier.weight(1f))
@@ -933,7 +950,7 @@ private fun EditorActionBar(
                     state = state,
                     compactLabels = false,
                     onViewModeChange = onViewModeChange,
-                    modifier = Modifier.width(220.dp)
+                    modifier = Modifier.width(AppSpacing.segmentedButtonWidth)
                 )
             }
         }
@@ -953,7 +970,15 @@ private fun EditorViewModeSelector(
                 shape = SegmentedButtonDefaults.itemShape(index = idx, count = ViewMode.entries.size),
                 onClick = { onViewModeChange(mode) },
                 selected = state.viewMode == mode,
-                modifier = Modifier.height(40.dp)
+                colors = SegmentedButtonDefaults.colors(
+                    activeContainerColor = MaterialTheme.colorScheme.surface,
+                    activeContentColor = MaterialTheme.colorScheme.primary,
+                    activeBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                    inactiveContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.36f),
+                    inactiveContentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f),
+                    inactiveBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.42f)
+                ),
+                modifier = Modifier.height(36.dp)
             ) {
                 Text(
                     text = when (mode) {
@@ -983,7 +1008,7 @@ private fun EditorActionIcon(
         val isHovered by interactionSource.collectIsHoveredAsState()
         val buttonColor = when {
             !enabled -> Color.Transparent
-            isHovered -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.72f)
+            isHovered -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.58f)
             else -> Color.Transparent
         }
         IconButton(
@@ -1138,14 +1163,37 @@ private val DeleteIcon: @Composable (Color) -> Unit = { color ->
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun EditorNoteHeader(state: NoteEditorState) {
+private fun EditorNoteHeader(
+    state: NoteEditorState,
+    onTitleChange: (String) -> Unit,
+    titleFocusRequester: FocusRequester
+) {
     Column(modifier = Modifier.fillMaxWidth()) {
-        Text(
-            text = state.title.ifBlank { Strings.currentNotePlaceholder },
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
+        val titleStyle = MaterialTheme.typography.headlineSmall.copy(
+            color = MaterialTheme.colorScheme.onSurface,
+            fontWeight = FontWeight.SemiBold
+        )
+        BasicTextField(
+            value = state.title,
+            onValueChange = onTitleChange,
+            singleLine = true,
+            textStyle = titleStyle,
+            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+            modifier = Modifier.fillMaxWidth().focusRequester(titleFocusRequester),
+            decorationBox = { innerTextField ->
+                Box {
+                    if (state.title.isBlank()) {
+                        Text(
+                            text = Strings.currentNotePlaceholder,
+                            style = titleStyle,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.56f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    innerTextField()
+                }
+            }
         )
         FlowRow(
             modifier = Modifier.fillMaxWidth().padding(top = AppSpacing.sm),
@@ -1200,21 +1248,10 @@ private fun SaveStateLabel(saveState: SaveState) {
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 private fun ColumnScope.EditorFields(
-    state: NoteEditorState,
     contentValue: TextFieldValue,
     onContentValueChange: (TextFieldValue) -> Unit,
-    onTitleChange: (String) -> Unit,
-    titleFocusRequester: FocusRequester,
-    focusManager: androidx.compose.ui.focus.FocusManager,
     showMarkdownToolbar: Boolean = true
 ) {
-    OutlinedTextField(value = state.title, onValueChange = onTitleChange,
-        label = { Text(Strings.editorTitle) }, singleLine = true,
-        modifier = Modifier.fillMaxWidth().focusRequester(titleFocusRequester).onKeyEvent { event ->
-            if (event.type == KeyEventType.KeyUp && event.key == Key.Tab) { focusManager.clearFocus(); true } else false
-        },
-        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next))
-    Spacer(Modifier.height(AppSpacing.lg))
     EditorMarkdownBody(
         contentValue = contentValue,
         onContentValueChange = onContentValueChange,
@@ -1237,10 +1274,20 @@ private fun EditorMarkdownBody(
                 onValueChange = onContentValueChange
             )
         }
-        OutlinedTextField(value = contentValue, onValueChange = onContentValueChange,
-            label = { Text(Strings.editorContent) },
-            modifier = Modifier.fillMaxWidth().weight(1f),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text))
+        BasicTextField(
+            value = contentValue,
+            onValueChange = onContentValueChange,
+            textStyle = MaterialTheme.typography.bodyLarge.copy(
+                color = MaterialTheme.colorScheme.onSurface,
+                lineHeight = 28.sp
+            ),
+            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .padding(top = AppSpacing.xs)
+        )
     }
 }
 
@@ -1251,8 +1298,8 @@ private fun MarkdownToolbar(
     onValueChange: (TextFieldValue) -> Unit
 ) {
     FlowRow(
-        modifier = Modifier.fillMaxWidth().heightIn(min = AppSpacing.toolbarHeight).padding(vertical = 2.dp),
-        horizontalArrangement = Arrangement.spacedBy(AppSpacing.md),
+        modifier = Modifier.fillMaxWidth().heightIn(min = 30.dp).padding(vertical = 1.dp),
+        horizontalArrangement = Arrangement.spacedBy(AppSpacing.sm),
         verticalArrangement = Arrangement.spacedBy(AppSpacing.xs)
     ) {
         val buttons = listOf(
@@ -1282,16 +1329,16 @@ private fun MarkdownToolbar(
                     )
                 },
                 modifier = Modifier
-                    .widthIn(min = 44.dp)
-                    .height(32.dp)
+                    .widthIn(min = 30.dp)
+                    .height(28.dp)
                     .focusProperties { canFocus = false },
                 shape = AppShapes.compact,
                 colors = ButtonDefaults.textButtonColors(
-                    contentColor = MaterialTheme.colorScheme.primary
+                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f)
                 ),
                 contentPadding = PaddingValues(horizontal = AppSpacing.sm, vertical = 0.dp)
             ) {
-                Text(label, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Text(label, fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
         }
     }

@@ -8,25 +8,25 @@ import androidx.compose.ui.graphics.Color
  */
 object AppColors {
     // Brand
-    val primaryLight = Color(0xFF3D7557)
+    val primaryLight = Color(0xFF2F6E50)
     val primaryDark = Color(0xFF7CC78E)
     val onPrimaryLight = Color.White
     val onPrimaryDark = Color(0xFF12321F)
-    val primaryContainerLight = Color(0xFFE3EFE6)
+    val primaryContainerLight = Color(0xFFEAF4EE)
     val primaryContainerDark = Color(0xFF1C432B)
 
     // Neutral
-    val surfaceLight = Color(0xFFFEFDF9)
+    val surfaceLight = Color(0xFFFFFEFB)
     val surfaceDark = Color(0xFF242321)
-    val backgroundLight = Color(0xFFF8F7F3)
+    val backgroundLight = Color(0xFFFBFAF6)
     val backgroundDark = Color(0xFF1C1B1A)
-    val onSurfaceLight = Color(0xFF3E403C)
+    val onSurfaceLight = Color(0xFF30332F)
     val onSurfaceDark = Color(0xFFE7E4DD)
-    val onBackgroundLight = Color(0xFF3E403C)
+    val onBackgroundLight = Color(0xFF30332F)
     val onBackgroundDark = Color(0xFFE7E4DD)
-    val outlineLight = Color(0xFFE2DED4)
+    val outlineLight = Color(0xFFECE7DD)
     val outlineDark = Color(0xFF3A3835)
-    val surfaceVariantLight = Color(0xFFF2EFE8)
+    val surfaceVariantLight = Color(0xFFFAF8F3)
     val surfaceVariantDark = Color(0xFF2C2A28)
 
     // Semantic
@@ -38,15 +38,15 @@ object AppColors {
     val tertiaryDark = Color(0xFFA2D2AE)
 
     // Editor specific
-    val sidebarLight = Color(0xFFF3F0E8)
+    val sidebarLight = Color(0xFFFAF8F3)
     val sidebarDark = Color(0xFF211F1E)
-    val editorLight = Color(0xFFFEFDF9)
+    val editorLight = Color(0xFFFFFEFA)
     val editorDark = Color(0xFF1D1C1B)
-    val hoverLight = Color(0xFFF0EEE7)
+    val hoverLight = Color(0xFFF2EFE8)
     val hoverDark = Color(0xFF2A302B)
-    val selectedLight = Color(0xFFE4F0E7)
+    val selectedLight = Color(0xFFEAF6EF)
     val selectedDark = Color(0xFF173C29)
-    val dividerLight = Color(0xFFE7E3DB)
+    val dividerLight = Color(0xFFEFEAE1)
     val dividerDark = Color(0xFF343230)
     val selectionHighlight = selectedLight
     val lineHighlightLight = Color(0xFFF0EDE4)
