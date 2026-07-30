@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.window.WindowDraggableArea
@@ -76,21 +77,21 @@ fun DesktopTitleBar(
                 Row(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(start = 18.dp, end = 160.dp),
+                        .padding(start = 24.dp, end = 176.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = Strings.appDisplayName,
-                        modifier = Modifier.widthIn(min = 84.dp, max = 170.dp),
+                        text = Strings.appBrandName,
+                        modifier = Modifier.widthIn(min = 54.dp, max = 110.dp),
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                     currentNoteTitle?.let { title ->
                         Text(
-                            text = " - ",
+                            text = " — ",
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
@@ -118,6 +119,7 @@ fun DesktopTitleBar(
                 icon = SettingsIcon,
                 onClick = onSettingsClick
             )
+            WindowDivider()
             WindowButton(
                 label = "Minimize",
                 icon = MinimizeIcon,
@@ -135,6 +137,16 @@ fun DesktopTitleBar(
             )
         }
     }
+}
+
+@Composable
+private fun WindowDivider() {
+    Box(
+        modifier = Modifier
+            .height(18.dp)
+            .width(1.dp)
+            .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f))
+    )
 }
 
 // ---- Reusable icon composables ----
@@ -241,7 +253,7 @@ private fun WindowButton(
 
     Box(
         modifier = Modifier
-            .size(46.dp)
+            .size(AppSpacing.titleBarHeight)
             .hoverable(interactionSource)
             .then(
                 if (isHovered) Modifier.background(
@@ -270,7 +282,7 @@ private fun CloseButton(
 
     Box(
         modifier = Modifier
-            .size(46.dp)
+            .size(AppSpacing.titleBarHeight)
             .hoverable(interactionSource)
             .then(
                 if (isHovered) Modifier.background(

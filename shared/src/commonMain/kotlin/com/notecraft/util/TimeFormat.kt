@@ -34,6 +34,11 @@ object TimeFormat {
             "${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}"
     }
 
+    fun formatMonthDay(epochMs: Long): String {
+        val (_, month, day, _, _) = epochToDateTime(epochMs)
+        return "${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}"
+    }
+
     // Simple epoch-to-date conversion (no timezone support — uses UTC)
     private fun epochToDate(ms: Long): Triple<Int, Int, Int> {
         val (y, m, d, _, _) = epochToDateTime(ms)
