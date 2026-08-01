@@ -1,7 +1,12 @@
 package com.notecraft.platform
 
+import kotlin.js.ExperimentalWasmJsInterop
+
+@OptIn(ExperimentalWasmJsInterop::class)
+private fun dateNow(): Double = js("Date.now()")
+
 actual fun currentTimeMillis(): Long {
-    return js("Date.now()").unsafeCast<Double>().toLong()
+    return dateNow().toLong()
 }
 
 actual object FileSystem {

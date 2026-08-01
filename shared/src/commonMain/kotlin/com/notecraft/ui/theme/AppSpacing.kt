@@ -24,10 +24,13 @@ object AppSpacing {
     val editorCompactPadding = 12.dp
     val sidebarWidth = 278.dp
     val sidebarMinWidth = 248.dp
+    val sidebarMaxWidth = 420.dp
     val sidebarNarrowWindowWidth = 920.dp
     val sidebarAutoCollapseWidth = 720.dp
     val settingsWidth = 300.dp
-    val titleBarHeight = 54.dp
+    val settingsPanelWidth = 430.dp
+    val titleBarHeight = 46.dp
+    val titleBarButtonSize = 36.dp
     val editorHeaderHeight = 54.dp
     val editorActionCompactWidth = 520.dp
     val editorActionNarrowWidth = 360.dp
@@ -40,6 +43,7 @@ object AppSpacing {
     val iconButtonSmall = 28.dp
     val iconButtonMedium = 30.dp
     val splitCollapseWidth = 760.dp
+    val splitPaneMinWidth = 280.dp
     val previewMaxWidth = 960.dp
     val dividerHeight = 1.dp
 }

@@ -9,6 +9,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import com.notecraft.presentation.settings.SettingsState
 import com.notecraft.util.Strings
 import com.notecraft.ui.theme.AppComponentDefaults
@@ -39,8 +40,9 @@ fun SettingsContent(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = Strings.settings,
-                    style = MaterialTheme.typography.headlineSmall,
+                    text = "应用设置",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -54,9 +56,9 @@ fun SettingsContent(
             }
             TextButton(
                 onClick = onClose,
-                contentPadding = AppComponentDefaults.compactPadding
+                contentPadding = PaddingValues(horizontal = AppSpacing.sm, vertical = 0.dp)
             ) {
-                Text(Strings.close, style = MaterialTheme.typography.labelMedium)
+                Text("×", style = MaterialTheme.typography.titleMedium)
             }
         }
 

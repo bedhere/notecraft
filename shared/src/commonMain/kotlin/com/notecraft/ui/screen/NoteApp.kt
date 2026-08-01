@@ -4,12 +4,15 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
@@ -23,6 +26,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.*
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -33,6 +37,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
@@ -72,6 +77,7 @@ fun NoteApp(
 
     settingsToggleSignal: androidx.compose.runtime.MutableState<Int>? = null,
     onToggleTile: ((String) -> Unit)? = null,
+    isNoteTiled: (String) -> Boolean = { false },
     onCurrentNoteTitleChange: (String?) -> Unit = {},
     desktopTitleBar: (@Composable () -> Unit)? = null
 ) {
@@ -87,6 +93,7 @@ fun NoteApp(
     val titleFocusRequester = remember { FocusRequester() }
     var showDeleteConfirm by remember { mutableStateOf<String?>(null) }
     var isSidebarVisible by remember { mutableStateOf(true) }
+    var sidebarWidthState by remember { mutableStateOf(AppSpacing.sidebarWidth) }
 
     LaunchedEffect(listState.selectedNoteId) {
         listState.selectedNoteId?.let { id ->
@@ -160,17 +167,18 @@ fun NoteApp(
                 ) {
                     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                         val showSidebar = isSidebarVisible && maxWidth >= AppSpacing.sidebarAutoCollapseWidth
+                        val sidebarMaxWidth = minOf(AppSpacing.sidebarMaxWidth, maxWidth * 0.45f)
                         val sidebarWidth = if (maxWidth < AppSpacing.sidebarNarrowWindowWidth) {
                             AppSpacing.sidebarMinWidth
                         } else {
-                            AppSpacing.sidebarWidth
+                            sidebarWidthState.coerceIn(AppSpacing.sidebarMinWidth, sidebarMaxWidth)
                         }
                         val editorPadding = if (maxWidth < AppSpacing.sidebarAutoCollapseWidth) {
                             AppSpacing.editorCompactPadding
                         } else {
                             AppSpacing.editorPadding
                         }
-                        val topSectionHeight = (maxHeight * 0.25f).coerceIn(176.dp, 204.dp)
+                        val topSectionHeight = 168.dp
 
                         Row(modifier = Modifier.fillMaxSize()) {
                             if (showSidebar) {
@@ -198,9 +206,32 @@ fun NoteApp(
                                     },
                                     modifier = Modifier.width(sidebarWidth).fillMaxHeight()
                                 )
-                                VerticalDivider()
+                                ResizableVerticalDivider(
+                                    onDrag = { delta ->
+                                        sidebarWidthState = (sidebarWidthState + delta)
+                                            .coerceIn(AppSpacing.sidebarMinWidth, sidebarMaxWidth)
+                                    }
+                                )
                             }
+                            EditorPanel(
+                                state = editorState,
+                                onTitleChange = { editorViewModel.updateTitle(it) },
+                                onContentChange = { editorViewModel.updateContent(it) },
+                                onSave = { editorViewModel.save() },
+                                onDelete = { editorState.noteId?.let { showDeleteConfirm = it } },
+                                onUndo = { editorViewModel.undo() },
+                                onRedo = { editorViewModel.redo() },
+                                onToggleSidebar = { isSidebarVisible = !isSidebarVisible },
+                                onViewModeChange = { editorViewModel.setViewMode(it) },
+                                onToggleTile = onToggleTile,
+                                isTiled = editorState.noteId?.let(isNoteTiled) ?: false,
+                                titleFocusRequester = titleFocusRequester,
+                                contentPadding = editorPadding,
+                                topSectionHeight = topSectionHeight,
+                                modifier = Modifier.weight(1f).fillMaxHeight()
+                            )
                             if (settingsState.isOpen) {
+                                VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f))
                                 SettingsContent(
                                     state = settingsState,
                                     onThemeChange = { settingsViewModel.updateTheme(it) },
@@ -209,24 +240,9 @@ fun NoteApp(
                                     onAutoSaveChange = { settingsViewModel.updateNoteAutoSave(it) },
                                     onCloseToTrayChange = { settingsViewModel.updateCloseToTray(it) },
                                     onClose = { settingsViewModel.close() },
-                                    modifier = Modifier.weight(1f).fillMaxHeight()
-                                )
-                            } else {
-                                EditorPanel(
-                                    state = editorState,
-                                    onTitleChange = { editorViewModel.updateTitle(it) },
-                                    onContentChange = { editorViewModel.updateContent(it) },
-                                    onSave = { editorViewModel.save() },
-                                    onDelete = { editorState.noteId?.let { showDeleteConfirm = it } },
-                                    onUndo = { editorViewModel.undo() },
-                                    onRedo = { editorViewModel.redo() },
-                                    onToggleSidebar = { isSidebarVisible = !isSidebarVisible },
-                                    onViewModeChange = { editorViewModel.setViewMode(it) },
-                                    onToggleTile = onToggleTile,
-                                    titleFocusRequester = titleFocusRequester,
-                                    contentPadding = editorPadding,
-                                    topSectionHeight = topSectionHeight,
-                                    modifier = Modifier.weight(1f).fillMaxHeight()
+                                    modifier = Modifier
+                                        .width(AppSpacing.settingsPanelWidth)
+                                        .fillMaxHeight()
                                 )
                             }
                         }
@@ -236,6 +252,43 @@ fun NoteApp(
         }
     }
 }
+
+@Composable
+private fun ResizableVerticalDivider(
+    modifier: Modifier = Modifier,
+    onDrag: (Dp) -> Unit
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isHovered by interactionSource.collectIsHoveredAsState()
+    val density = LocalDensity.current
+    val lineColor = if (isHovered) {
+        MaterialTheme.colorScheme.primary.copy(alpha = 0.55f)
+    } else {
+        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.62f)
+    }
+
+    Box(
+        modifier = modifier
+            .width(10.dp)
+            .fillMaxHeight()
+            .hoverable(interactionSource)
+            .pointerInput(Unit) {
+                detectDragGestures { change, dragAmount ->
+                    change.consume()
+                    onDrag(with(density) { dragAmount.x.toDp() })
+                }
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .width(2.dp)
+                .fillMaxHeight()
+                .background(lineColor)
+        )
+    }
+}
+
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun NoteListPanel(
@@ -330,7 +383,7 @@ fun NoteListPanel(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Spacer(Modifier.height(AppSpacing.lg))
+                Spacer(Modifier.height(AppSpacing.xs))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -625,12 +678,14 @@ fun EditorPanel(
     onToggleSidebar: () -> Unit = {},
     onViewModeChange: (ViewMode) -> Unit,
     onToggleTile: ((String) -> Unit)? = null,
+    isTiled: Boolean = false,
     titleFocusRequester: FocusRequester = remember { FocusRequester() },
     contentPadding: androidx.compose.ui.unit.Dp = AppSpacing.editorPadding,
     topSectionHeight: androidx.compose.ui.unit.Dp,
     modifier: Modifier = Modifier
 ) {
     val previewScrollState = remember(state.noteId) { ScrollState(0) }
+    var splitRatio by remember { mutableFloatStateOf(0.52f) }
     var contentValue by remember(state.noteId) {
         mutableStateOf(TextFieldValue(state.content))
     }
@@ -674,10 +729,11 @@ fun EditorPanel(
                 onRedo = onRedo,
                 onSave = onSave,
                 onDelete = onDelete,
+                isTiled = isTiled,
                 onViewModeChange = onViewModeChange
             )
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.72f))
-            Spacer(Modifier.height(AppSpacing.xxl))
+            Spacer(Modifier.height(AppSpacing.md))
             EditorNoteHeader(
                 state = state,
                 onTitleChange = onTitleChange,
@@ -695,7 +751,7 @@ fun EditorPanel(
                 )
             }
         }
-        Spacer(Modifier.height(AppSpacing.sm))
+        Spacer(Modifier.height(AppSpacing.xs))
         BoxWithConstraints(modifier = Modifier.fillMaxWidth().weight(1f)) {
             when (state.viewMode) {
                 ViewMode.EDIT -> {
@@ -725,16 +781,24 @@ fun EditorPanel(
                             )
                         }
                     } else {
+                        val availableWidth = maxWidth
+                        val leftMaxWidth = availableWidth - AppSpacing.splitPaneMinWidth
+                        val leftWidth = (availableWidth * splitRatio)
+                            .coerceIn(AppSpacing.splitPaneMinWidth, leftMaxWidth)
                         Row(modifier = Modifier.fillMaxSize()) {
                             EditorMarkdownBody(
                                 contentValue = contentValue,
                                 onContentValueChange = onContentValueChange,
                                 showToolbar = false,
-                                modifier = Modifier.weight(1.08f).fillMaxHeight()
+                                modifier = Modifier.width(leftWidth).fillMaxHeight()
                             )
-                            VerticalDivider(
-                                modifier = Modifier.fillMaxHeight().padding(horizontal = AppSpacing.xl),
-                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f)
+                            ResizableVerticalDivider(
+                                modifier = Modifier.padding(horizontal = AppSpacing.lg),
+                                onDrag = { delta ->
+                                    val newLeft = (leftWidth + delta)
+                                        .coerceIn(AppSpacing.splitPaneMinWidth, leftMaxWidth)
+                                    splitRatio = (newLeft.value / availableWidth.value).coerceIn(0.28f, 0.72f)
+                                }
                             )
                             PreviewPane(
                                 content = contentValue.text,
@@ -849,6 +913,7 @@ private fun EditorActionBar(
     onRedo: () -> Unit,
     onSave: () -> Unit,
     onDelete: () -> Unit,
+    isTiled: Boolean,
     onViewModeChange: (ViewMode) -> Unit
 ) {
     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
@@ -862,25 +927,26 @@ private fun EditorActionBar(
                 ) {
                     EditorActionIcon(
                         icon = SidebarToggleIcon,
-                        label = "Toggle sidebar",
+                        label = Strings.toggleSidebar,
                         onClick = onToggleSidebar
                     )
                     onToggleTile?.let { toggle ->
                         EditorActionIcon(
                             icon = PinIcon,
-                            label = Strings.pin,
-                            onClick = { state.noteId?.let(toggle) }
+                            label = if (isTiled) Strings.unpin else Strings.pin,
+                            onClick = { state.noteId?.let(toggle) },
+                            selected = isTiled
                         )
                     }
                     EditorActionIcon(
                         icon = UndoIcon,
-                        label = "Undo",
+                        label = Strings.undo,
                         enabled = state.canUndo,
                         onClick = onUndo
                     )
                     EditorActionIcon(
                         icon = RedoIcon,
-                        label = "Redo",
+                        label = Strings.redo,
                         enabled = state.canRedo,
                         onClick = onRedo
                     )
@@ -912,25 +978,26 @@ private fun EditorActionBar(
             ) {
                 EditorActionIcon(
                     icon = SidebarToggleIcon,
-                    label = "Toggle sidebar",
+                    label = Strings.toggleSidebar,
                     onClick = onToggleSidebar
                 )
                 onToggleTile?.let { toggle ->
                     EditorActionIcon(
                         icon = PinIcon,
-                        label = Strings.pin,
-                        onClick = { state.noteId?.let(toggle) }
+                        label = if (isTiled) Strings.unpin else Strings.pin,
+                        onClick = { state.noteId?.let(toggle) },
+                        selected = isTiled
                     )
                 }
                 EditorActionIcon(
                     icon = UndoIcon,
-                    label = "Undo",
+                    label = Strings.undo,
                     enabled = state.canUndo,
                     onClick = onUndo
                 )
                 EditorActionIcon(
                     icon = RedoIcon,
-                    label = "Redo",
+                    label = Strings.redo,
                     enabled = state.canRedo,
                     onClick = onRedo
                 )
@@ -1001,6 +1068,7 @@ private fun EditorActionIcon(
     label: String,
     onClick: () -> Unit,
     enabled: Boolean = true,
+    selected: Boolean = false,
     tint: Color = MaterialTheme.colorScheme.onSurfaceVariant
 ) {
     EditorTooltip(label = label) {
@@ -1009,6 +1077,7 @@ private fun EditorActionIcon(
         val buttonColor = when {
             !enabled -> Color.Transparent
             isHovered -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.58f)
+            selected -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.42f)
             else -> Color.Transparent
         }
         IconButton(
@@ -1022,7 +1091,8 @@ private fun EditorActionIcon(
         ) {
             Box(modifier = Modifier.size(18.dp), contentAlignment = Alignment.Center) {
                 icon(
-                    if (enabled) tint
+                    if (selected && enabled) MaterialTheme.colorScheme.primary
+                    else if (enabled) tint
                     else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
                 )
             }
@@ -1291,54 +1361,59 @@ private fun EditorMarkdownBody(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun MarkdownToolbar(
     value: TextFieldValue,
     onValueChange: (TextFieldValue) -> Unit
 ) {
-    FlowRow(
-        modifier = Modifier.fillMaxWidth().heightIn(min = 30.dp).padding(vertical = 1.dp),
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(32.dp)
+            .horizontalScroll(rememberScrollState())
+            .padding(vertical = 1.dp),
         horizontalArrangement = Arrangement.spacedBy(AppSpacing.sm),
-        verticalArrangement = Arrangement.spacedBy(AppSpacing.xs)
+        verticalAlignment = Alignment.CenterVertically
     ) {
         val buttons = listOf(
-            "B" to MarkdownFormat.BOLD,
-            "I" to MarkdownFormat.ITALIC,
-            "H1" to MarkdownFormat.HEADING,
-            "---" to MarkdownFormat.THEMATIC_BREAK,
-            "- " to MarkdownFormat.BULLET_LIST,
-            "1. " to MarkdownFormat.ORDERED_LIST,
-            "```" to MarkdownFormat.CODE_BLOCK,
-            "> " to MarkdownFormat.BLOCKQUOTE
+            Triple("B", Strings.formatBold, MarkdownFormat.BOLD),
+            Triple("I", Strings.formatItalic, MarkdownFormat.ITALIC),
+            Triple("H", Strings.formatHeading, MarkdownFormat.HEADING),
+            Triple("-", Strings.formatThematicBreak, MarkdownFormat.THEMATIC_BREAK),
+            Triple("*", Strings.formatBulletList, MarkdownFormat.BULLET_LIST),
+            Triple("1.", Strings.formatOrderedList, MarkdownFormat.ORDERED_LIST),
+            Triple("<>", Strings.formatCodeBlock, MarkdownFormat.CODE_BLOCK),
+            Triple(">", Strings.formatBlockquote, MarkdownFormat.BLOCKQUOTE)
         )
-        buttons.forEach { (label, format) ->
-            TextButton(
-                onClick = {
-                    val result = MarkdownFormatting.apply(
-                        text = value.text,
-                        selectionStart = value.selection.start,
-                        selectionEnd = value.selection.end,
-                        format = format
-                    )
-                    onValueChange(
-                        TextFieldValue(
-                            text = result.text,
-                            selection = TextRange(result.selectionStart, result.selectionEnd)
+        buttons.forEach { (label, tooltip, format) ->
+            EditorTooltip(label = tooltip) {
+                TextButton(
+                    onClick = {
+                        val result = MarkdownFormatting.apply(
+                            text = value.text,
+                            selectionStart = value.selection.start,
+                            selectionEnd = value.selection.end,
+                            format = format
                         )
-                    )
-                },
-                modifier = Modifier
-                    .widthIn(min = 30.dp)
-                    .height(28.dp)
-                    .focusProperties { canFocus = false },
-                shape = AppShapes.compact,
-                colors = ButtonDefaults.textButtonColors(
-                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f)
-                ),
-                contentPadding = PaddingValues(horizontal = AppSpacing.sm, vertical = 0.dp)
-            ) {
-                Text(label, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        onValueChange(
+                            TextFieldValue(
+                                text = result.text,
+                                selection = TextRange(result.selectionStart, result.selectionEnd)
+                            )
+                        )
+                    },
+                    modifier = Modifier
+                        .widthIn(min = 30.dp)
+                        .height(28.dp)
+                        .focusProperties { canFocus = false },
+                    shape = AppShapes.compact,
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f)
+                    ),
+                    contentPadding = PaddingValues(horizontal = AppSpacing.sm, vertical = 0.dp)
+                ) {
+                    Text(label, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
             }
         }
     }
