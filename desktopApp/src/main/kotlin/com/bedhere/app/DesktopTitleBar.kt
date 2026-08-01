@@ -35,7 +35,10 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.WindowScope
 import androidx.compose.ui.window.WindowState
@@ -48,6 +51,7 @@ fun DesktopTitleBar(
     windowState: WindowState,
     currentNoteTitle: String?,
     onMinimize: () -> Unit,
+    onQuickNote: () -> Unit,
     onSettingsClick: () -> Unit,
     onClose: () -> Unit
 ) {
@@ -77,7 +81,7 @@ fun DesktopTitleBar(
                 Row(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(start = 24.dp, end = 176.dp),
+                        .padding(start = 24.dp, end = 206.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
@@ -111,27 +115,33 @@ fun DesktopTitleBar(
         Row(
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .fillMaxHeight(),
+                .fillMaxHeight()
+                .padding(end = 6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             WindowButton(
-                label = "Settings",
+                label = Strings.quickNote,
+                icon = QuickNoteIcon,
+                onClick = onQuickNote
+            )
+            WindowButton(
+                label = Strings.settings,
                 icon = SettingsIcon,
                 onClick = onSettingsClick
             )
             WindowDivider()
             WindowButton(
-                label = "Minimize",
+                label = Strings.minimize,
                 icon = MinimizeIcon,
                 onClick = onMinimize
             )
             WindowButton(
-                label = if (windowState.placement == WindowPlacement.Maximized) "Restore" else "Maximize",
+                label = if (windowState.placement == WindowPlacement.Maximized) Strings.restore else Strings.maximize,
                 icon = if (windowState.placement == WindowPlacement.Maximized) RestoreIcon else MaximizeIcon,
                 onClick = toggleMaximize
             )
             CloseButton(
-                label = "Close",
+                label = Strings.close,
                 icon = CloseIcon,
                 onClick = onClose
             )
@@ -221,6 +231,43 @@ private val SettingsIcon: @Composable (Color) -> Unit = { color ->
     }
 }
 
+private val QuickNoteIcon: @Composable (Color) -> Unit = { color ->
+    Canvas(modifier = Modifier.size(14.dp)) {
+        val inset = 1.5f
+        drawRoundRect(
+            color = color,
+            topLeft = Offset(inset, inset),
+            size = Size(size.width - inset * 2, size.height - inset * 2),
+            cornerRadius = CornerRadius(2.2f, 2.2f),
+            style = Stroke(width = 1.6f)
+        )
+        drawLine(
+            color = color,
+            start = Offset(size.width * 0.32f, size.height * 0.42f),
+            end = Offset(size.width * 0.78f, size.height * 0.42f),
+            strokeWidth = 1.5f
+        )
+        drawLine(
+            color = color,
+            start = Offset(size.width * 0.32f, size.height * 0.62f),
+            end = Offset(size.width * 0.66f, size.height * 0.62f),
+            strokeWidth = 1.5f
+        )
+        drawLine(
+            color = color,
+            start = Offset(size.width * 0.25f, size.height * 0.18f),
+            end = Offset(size.width * 0.25f, size.height * 0.04f),
+            strokeWidth = 1.7f
+        )
+        drawLine(
+            color = color,
+            start = Offset(size.width * 0.75f, size.height * 0.18f),
+            end = Offset(size.width * 0.75f, size.height * 0.04f),
+            strokeWidth = 1.7f
+        )
+    }
+}
+
 private val CloseIcon: @Composable (Color) -> Unit = { color ->
     Canvas(modifier = Modifier.size(14.dp)) {
         val strokeWidth = 1.8f
@@ -248,26 +295,28 @@ private fun WindowButton(
     icon: @Composable (Color) -> Unit,
     onClick: () -> Unit
 ) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isHovered by interactionSource.collectIsHoveredAsState()
+    WindowTooltip(label = label) {
+        val interactionSource = remember { MutableInteractionSource() }
+        val isHovered by interactionSource.collectIsHoveredAsState()
 
-    Box(
-        modifier = Modifier
-            .size(AppSpacing.titleBarHeight)
-            .hoverable(interactionSource)
-            .then(
-                if (isHovered) Modifier.background(
-                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
-                    shape = RoundedCornerShape(0.dp)
-                ) else Modifier
-            )
-            .pointerInput(onClick) {
-                detectTapGestures(onTap = { onClick() })
-            }
-            .semantics { contentDescription = label },
-        contentAlignment = Alignment.Center
-    ) {
-        icon(MaterialTheme.colorScheme.onSurfaceVariant)
+        Box(
+            modifier = Modifier
+                .size(AppSpacing.titleBarButtonSize)
+                .hoverable(interactionSource)
+                .then(
+                    if (isHovered) Modifier.background(
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
+                        shape = RoundedCornerShape(6.dp)
+                    ) else Modifier
+                )
+                .pointerInput(onClick) {
+                    detectTapGestures(onTap = { onClick() })
+                }
+                .semantics { contentDescription = label },
+            contentAlignment = Alignment.Center
+        ) {
+            icon(MaterialTheme.colorScheme.onSurfaceVariant)
+        }
     }
 }
 
@@ -277,29 +326,63 @@ private fun CloseButton(
     icon: @Composable (Color) -> Unit,
     onClick: () -> Unit
 ) {
+    WindowTooltip(label = label) {
+        val interactionSource = remember { MutableInteractionSource() }
+        val isHovered by interactionSource.collectIsHoveredAsState()
+
+        Box(
+            modifier = Modifier
+                .size(AppSpacing.titleBarButtonSize)
+                .hoverable(interactionSource)
+                .then(
+                    if (isHovered) Modifier.background(
+                        MaterialTheme.colorScheme.error.copy(alpha = 0.85f),
+                        shape = RoundedCornerShape(6.dp)
+                    ) else Modifier
+                )
+                .pointerInput(onClick) {
+                    detectTapGestures(onTap = { onClick() })
+                }
+                .semantics { contentDescription = label },
+            contentAlignment = Alignment.Center
+        ) {
+            icon(
+                if (isHovered) Color.White
+                else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun WindowTooltip(
+    label: String,
+    content: @Composable () -> Unit
+) {
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
 
-    Box(
-        modifier = Modifier
-            .size(AppSpacing.titleBarHeight)
-            .hoverable(interactionSource)
-            .then(
-                if (isHovered) Modifier.background(
-                    MaterialTheme.colorScheme.error.copy(alpha = 0.85f),
-                    shape = RoundedCornerShape(0.dp)
-                ) else Modifier
-            )
-            .pointerInput(onClick) {
-                detectTapGestures(onTap = { onClick() })
+    Box(modifier = Modifier.hoverable(interactionSource)) {
+        content()
+        if (isHovered) {
+            Popup(
+                alignment = Alignment.BottomCenter,
+                offset = IntOffset(0, 8),
+                properties = PopupProperties(focusable = false)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .background(MaterialTheme.colorScheme.inverseSurface, RoundedCornerShape(6.dp))
+                        .padding(horizontal = 8.dp, vertical = 5.dp)
+                ) {
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.inverseOnSurface
+                    )
+                }
             }
-            .semantics { contentDescription = label },
-        contentAlignment = Alignment.Center
-    ) {
-        icon(
-            if (isHovered) Color.White
-            else MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        }
     }
 }
 

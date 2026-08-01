@@ -1,22 +1,33 @@
 ﻿package com.bedhere.app
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.*
 import com.notecraft.data.repository.NoteRepositoryImpl
 import com.notecraft.data.repository.SettingsRepositoryImpl
+import com.notecraft.domain.model.SaveNoteRequest
 import com.notecraft.importexport.JvmFileDialogService
 import com.notecraft.storage.JvmNoteStorage
 import com.notecraft.storage.JvmSettingsStorage
 import com.notecraft.ui.screen.NoteApp
 import com.notecraft.util.Strings
+import java.awt.KeyboardFocusManager
+import java.awt.event.KeyEvent
 import java.io.File
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
 @OptIn(ExperimentalComposeUiApi::class)
@@ -33,7 +44,7 @@ fun main() = application {
 
     // Window state persistence
     val stateFile = File(dataDir, "window_state.txt")
-    var savedX = 100; var savedY = 100; var savedW = 1100; var savedH = 720
+    var savedX = 100; var savedY = 100; var savedW = 1477; var savedH = 952
     if (stateFile.exists()) {
         try {
             val parts = stateFile.readText().trim().split(",").map { it.toInt() }
@@ -47,15 +58,34 @@ fun main() = application {
     )
     val windowVisible = mutableStateOf(true)
     val tileNoteIds = mutableStateListOf<String>()
+    val quickNoteIds = mutableStateListOf<String>()
     var currentNoteTitle by remember { mutableStateOf<String?>(null) }
     val settingsToggleSignal = mutableStateOf(0)
+    val scope = rememberCoroutineScope()
+
+    val launchQuickNote: () -> Unit = {
+        scope.launch {
+            val note = noteRepo.createNote(SaveNoteRequest(title = "", content = "", category = ""))
+            if (note.id !in quickNoteIds) quickNoteIds.add(note.id)
+        }
+    }
 
     // Shortcut manager
     val shortcutMgr = ShortcutManager(
-        onQuickNote = { },
+        onQuickNote = launchQuickNote,
         onToggleVisibility = { windowVisible.value = !windowVisible.value }
     )
     if (appConfig != null) shortcutMgr.registerFromConfig(appConfig)
+    DisposableEffect(shortcutMgr) {
+        val dispatcher = java.awt.KeyEventDispatcher { event ->
+            event.id == KeyEvent.KEY_PRESSED && shortcutMgr.handleKeyEvent(event.keyCode, event.modifiersEx)
+        }
+        KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(dispatcher)
+        onDispose {
+            KeyboardFocusManager.getCurrentKeyboardFocusManager().removeKeyEventDispatcher(dispatcher)
+            shortcutMgr.unregisterAll()
+        }
+    }
 
     // Tile windows
     for (noteId in tileNoteIds) {
@@ -63,6 +93,13 @@ fun main() = application {
             noteId = noteId,
             noteRepository = noteRepo,
             onClose = { tileNoteIds.remove(noteId) }
+        )
+    }
+    for (noteId in quickNoteIds) {
+        QuickNoteWindow(
+            noteId = noteId,
+            noteRepository = noteRepo,
+            onClose = { quickNoteIds.remove(noteId) }
         )
     }
 
@@ -118,27 +155,35 @@ fun main() = application {
             state = windowState
         ) {
             val windowScope = this
-            NoteApp(
-                noteRepository = noteRepo,
-                settingsRepository = settingsRepo,
-                fileDialogService = fileDialog,
-                onCurrentNoteTitleChange = { currentNoteTitle = it },
-                desktopTitleBar = {
-                    DesktopTitleBar(
-                        windowScope = windowScope,
-                        windowState = windowState,
-                        currentNoteTitle = currentNoteTitle,
-                        onMinimize = { windowState.isMinimized = true },
-                        onSettingsClick = { settingsToggleSignal.value++ },
-                        onClose = requestClose
-                    )
-                },
-                settingsToggleSignal = settingsToggleSignal,
-                onToggleTile = { noteId ->
-                    if (noteId in tileNoteIds) tileNoteIds.remove(noteId)
-                    else tileNoteIds.add(noteId)
-                }
-            )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(12.dp))
+            ) {
+                NoteApp(
+                    noteRepository = noteRepo,
+                    settingsRepository = settingsRepo,
+                    fileDialogService = fileDialog,
+                    onCurrentNoteTitleChange = { currentNoteTitle = it },
+                    desktopTitleBar = {
+                        DesktopTitleBar(
+                            windowScope = windowScope,
+                            windowState = windowState,
+                            currentNoteTitle = currentNoteTitle,
+                            onMinimize = { windowState.isMinimized = true },
+                            onQuickNote = launchQuickNote,
+                            onSettingsClick = { settingsToggleSignal.value++ },
+                            onClose = requestClose
+                        )
+                    },
+                    settingsToggleSignal = settingsToggleSignal,
+                    onToggleTile = { noteId ->
+                        if (noteId in tileNoteIds) tileNoteIds.remove(noteId)
+                        else tileNoteIds.add(noteId)
+                    },
+                    isNoteTiled = { it in tileNoteIds }
+                )
+            }
         }
     }
 }
