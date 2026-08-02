@@ -2,6 +2,7 @@ package com.bedhere.app
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -15,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.DpSize
@@ -80,6 +82,7 @@ fun ApplicationScope.TileWindow(
             onClose()
         },
         title = "Tile",
+        icon = painterResource("notecraft_logo.png"),
         state = windowState,
         alwaysOnTop = true
     ) {
@@ -91,6 +94,7 @@ fun ApplicationScope.TileWindow(
 fun ApplicationScope.QuickNoteWindow(
     noteId: String,
     noteRepository: NoteRepository,
+    onNoteSaved: () -> Unit = {},
     onClose: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
@@ -104,9 +108,9 @@ fun ApplicationScope.QuickNoteWindow(
         if (stateFile.exists()) {
             try {
                 val p = stateFile.readText().trim().split(",").map { it.toInt() }
-                if (p.size >= 4) listOf(p[0], p[1], p[2], p[3]) else listOf(260, 160, 736, 570)
-            } catch (_: Exception) { listOf(260, 160, 736, 570) }
-        } else listOf(260, 160, 736, 570)
+                if (p.size >= 4) listOf(p[0], p[1], p[2], p[3]) else listOf(320, 180, 420, 360)
+            } catch (_: Exception) { listOf(320, 180, 420, 360) }
+        } else listOf(320, 180, 420, 360)
     }
 
     LaunchedEffect(noteId) {
@@ -150,6 +154,7 @@ fun ApplicationScope.QuickNoteWindow(
             scope.launch {
                 try {
                     noteRepository.updateNote(noteId, SaveNoteRequest(title, content, ""))
+                    onNoteSaved()
                 } catch (_: Exception) {
                 }
             }
@@ -166,6 +171,7 @@ fun ApplicationScope.QuickNoteWindow(
             runBlocking {
                 try {
                     noteRepository.updateNote(noteId, SaveNoteRequest(title, content, ""))
+                    onNoteSaved()
                 } catch (_: Exception) {
                 }
             }
@@ -176,6 +182,7 @@ fun ApplicationScope.QuickNoteWindow(
     Window(
         onCloseRequest = persistAndClose,
         title = Strings.quickNote,
+        icon = painterResource("notecraft_logo.png"),
         state = windowState,
         undecorated = true,
         transparent = true,
@@ -229,31 +236,33 @@ private fun QuickNoteContent(
             }
         } else {
             Column(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
-                Box(modifier = Modifier.fillMaxWidth().height(60.dp)) {
+                Box(modifier = Modifier.fillMaxWidth().height(54.dp)) {
                     with(windowScope) {
                         WindowDraggableArea(modifier = Modifier.fillMaxSize()) {
                             Row(
-                                modifier = Modifier.fillMaxSize().padding(start = 20.dp, end = 92.dp),
+                                modifier = Modifier.fillMaxSize().padding(start = 16.dp, end = 104.dp),
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(28.dp)
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
-                                Text(
-                                    text = "新建",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier
-                                        .height(34.dp)
-                                        .padding(top = 7.dp)
+                                Image(
+                                    painter = painterResource("notecraft_logo.png"),
+                                    contentDescription = Strings.appBrandName,
+                                    modifier = Modifier.size(30.dp)
                                 )
                                 Text(
-                                    text = "打开",
-                                    style = MaterialTheme.typography.bodyMedium,
+                                    text = Strings.quickNote,
+                                    style = MaterialTheme.typography.titleSmall,
                                     fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.48f),
-                                    modifier = Modifier
-                                        .height(34.dp)
-                                        .padding(top = 7.dp)
+                                    color = MaterialTheme.colorScheme.primary,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Text(
+                                    text = "自动保存",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.62f),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
                         }
@@ -264,9 +273,9 @@ private fun QuickNoteContent(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = if (pinned) "●" else "○",
+                            text = if (pinned) "置顶" else "常规",
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.62f),
-                            style = MaterialTheme.typography.bodyMedium,
+                            style = MaterialTheme.typography.labelSmall,
                             modifier = Modifier.clickable { onPinToggle() }
                         )
                         Text(

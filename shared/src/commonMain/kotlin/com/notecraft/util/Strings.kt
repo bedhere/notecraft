@@ -34,7 +34,7 @@ object Strings {
     const val toggleSidebar = "显示/隐藏笔记列表"
     const val undo = "撤销"
     const val redo = "重做"
-    const val quickNote = "快捷便签"
+    const val quickNote = "便携便签"
     fun words(count: Int) = "字数：$count"
 
     const val formatBold = "加粗"
