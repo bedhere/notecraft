@@ -76,6 +76,7 @@ fun NoteApp(
     fileDialogService: FileDialogService? = null,
 
     settingsToggleSignal: androidx.compose.runtime.MutableState<Int>? = null,
+    externalNotesRefreshSignal: androidx.compose.runtime.MutableState<Int>? = null,
     onToggleTile: ((String) -> Unit)? = null,
     isNoteTiled: (String) -> Boolean = { false },
     onCurrentNoteTitleChange: (String?) -> Unit = {},
@@ -110,6 +111,12 @@ fun NoteApp(
         val count = settingsToggleSignal?.value ?: 0
         if (count > 0) {
             settingsViewModel.toggleOpen()
+        }
+    }
+    LaunchedEffect(externalNotesRefreshSignal?.value) {
+        val count = externalNotesRefreshSignal?.value ?: 0
+        if (count > 0) {
+            listViewModel.loadAll()
         }
     }
     LaunchedEffect(editorState.noteId, editorState.title) {
@@ -178,7 +185,7 @@ fun NoteApp(
                         } else {
                             AppSpacing.editorPadding
                         }
-                        val topSectionHeight = 168.dp
+                        val topSectionHeight = 142.dp
 
                         Row(modifier = Modifier.fillMaxSize()) {
                             if (showSidebar) {
@@ -204,6 +211,7 @@ fun NoteApp(
                                             scope.launch { importExport.exportMarkdownFile(nid) }
                                         }
                                     },
+                                    topSectionHeight = topSectionHeight,
                                     modifier = Modifier.width(sidebarWidth).fillMaxHeight()
                                 )
                                 ResizableVerticalDivider(
@@ -301,6 +309,7 @@ fun NoteListPanel(
     onSettingsClick: () -> Unit,
     onImport: () -> Unit,
     onExport: () -> Unit,
+    topSectionHeight: Dp = 142.dp,
     modifier: Modifier = Modifier
 ) {
     var selectedIdx by remember(state.selectedNoteId, state.filteredNotes) {
@@ -308,14 +317,17 @@ fun NoteListPanel(
     }
 
     Surface(modifier = modifier, color = MaterialTheme.colorScheme.surfaceVariant) {
-        Column(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 14.dp, vertical = AppSpacing.lg)
-        ) {
-            Column(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(topSectionHeight)
+                    .padding(start = 14.dp, top = AppSpacing.md, end = 14.dp, bottom = AppSpacing.sm)
+            ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(AppSpacing.searchFieldHeight)
+                        .height(36.dp)
                         .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.74f), AppShapes.control)
                         .border(
                             width = 1.dp,
@@ -365,7 +377,7 @@ fun NoteListPanel(
                         )
                     }
                 }
-                Spacer(Modifier.height(AppSpacing.md))
+                Spacer(Modifier.height(6.dp))
 
                 SidebarAction(
                     icon = "+",
@@ -386,7 +398,7 @@ fun NoteListPanel(
                 Spacer(Modifier.height(AppSpacing.xs))
 
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().height(20.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
@@ -424,6 +436,7 @@ fun NoteListPanel(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
+                    .padding(horizontal = 14.dp)
                     .onKeyEvent { event ->
                         when {
                             event.type == KeyEventType.KeyDown && event.key == Key.DirectionDown -> {
@@ -499,7 +512,7 @@ private fun SidebarAction(
 
     Row(
         modifier = modifier
-            .height(32.dp)
+            .height(28.dp)
             .background(actionColor, AppShapes.control)
             .hoverable(interactionSource, enabled)
             .focusable(enabled)
@@ -743,13 +756,6 @@ fun EditorPanel(
                 modifier = Modifier.padding(top = AppSpacing.md),
                 color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.72f)
             )
-            Spacer(Modifier.weight(1f))
-            if (state.viewMode != ViewMode.PREVIEW) {
-                MarkdownToolbar(
-                    value = contentValue,
-                    onValueChange = onContentValueChange
-                )
-            }
         }
         Spacer(Modifier.height(AppSpacing.xs))
         BoxWithConstraints(modifier = Modifier.fillMaxWidth().weight(1f)) {
@@ -759,7 +765,7 @@ fun EditorPanel(
                         EditorFields(
                             contentValue = contentValue,
                             onContentValueChange = onContentValueChange,
-                            showMarkdownToolbar = false
+                            showMarkdownToolbar = true
                         )
                     }
                 }
@@ -776,7 +782,7 @@ fun EditorPanel(
                             EditorMarkdownBody(
                                 contentValue = contentValue,
                                 onContentValueChange = onContentValueChange,
-                                showToolbar = false,
+                                showToolbar = true,
                                 modifier = Modifier.fillMaxSize()
                             )
                         }
@@ -789,7 +795,7 @@ fun EditorPanel(
                             EditorMarkdownBody(
                                 contentValue = contentValue,
                                 onContentValueChange = onContentValueChange,
-                                showToolbar = false,
+                                showToolbar = true,
                                 modifier = Modifier.width(leftWidth).fillMaxHeight()
                             )
                             ResizableVerticalDivider(

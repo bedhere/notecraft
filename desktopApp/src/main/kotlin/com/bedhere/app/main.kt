@@ -13,6 +13,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.*
@@ -61,12 +62,14 @@ fun main() = application {
     val quickNoteIds = mutableStateListOf<String>()
     var currentNoteTitle by remember { mutableStateOf<String?>(null) }
     val settingsToggleSignal = mutableStateOf(0)
+    val notesRefreshSignal = mutableStateOf(0)
     val scope = rememberCoroutineScope()
 
     val launchQuickNote: () -> Unit = {
         scope.launch {
             val note = noteRepo.createNote(SaveNoteRequest(title = "", content = "", category = ""))
             if (note.id !in quickNoteIds) quickNoteIds.add(note.id)
+            notesRefreshSignal.value++
         }
     }
 
@@ -99,6 +102,7 @@ fun main() = application {
         QuickNoteWindow(
             noteId = noteId,
             noteRepository = noteRepo,
+            onNoteSaved = { notesRefreshSignal.value++ },
             onClose = { quickNoteIds.remove(noteId) }
         )
     }
@@ -150,6 +154,7 @@ fun main() = application {
         Window(
             onCloseRequest = requestClose,
             title = Strings.appDisplayName,
+            icon = painterResource("notecraft_logo.png"),
             undecorated = true,
             transparent = true,
             state = windowState
@@ -177,6 +182,7 @@ fun main() = application {
                         )
                     },
                     settingsToggleSignal = settingsToggleSignal,
+                    externalNotesRefreshSignal = notesRefreshSignal,
                     onToggleTile = { noteId ->
                         if (noteId in tileNoteIds) tileNoteIds.remove(noteId)
                         else tileNoteIds.add(noteId)
