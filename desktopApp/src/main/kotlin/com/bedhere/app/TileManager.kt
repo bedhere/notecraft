@@ -2,7 +2,6 @@ package com.bedhere.app
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -24,8 +23,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.*
 import com.notecraft.domain.model.SaveNoteRequest
 import com.notecraft.domain.model.Note
+import com.notecraft.domain.model.NoteMetadata
 import com.notecraft.domain.repository.NoteRepository
 import com.notecraft.ui.markdown.MarkdownContent
+import com.notecraft.ui.theme.NotecraftTheme
 import com.notecraft.util.NoteUtils
 import com.notecraft.util.Strings
 import kotlinx.coroutines.delay
@@ -86,7 +87,9 @@ fun ApplicationScope.TileWindow(
         state = windowState,
         alwaysOnTop = true
     ) {
-        TileContent(note = note, modifier = Modifier.fillMaxSize())
+        NotecraftTheme {
+            TileContent(note = note, modifier = Modifier.fillMaxSize())
+        }
     }
 }
 
@@ -98,10 +101,13 @@ fun ApplicationScope.QuickNoteWindow(
     onClose: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
+    var activeNoteId by remember(noteId) { mutableStateOf(noteId) }
     var loaded by remember(noteId) { mutableStateOf(false) }
     var title by remember(noteId) { mutableStateOf("") }
     var content by remember(noteId) { mutableStateOf("") }
-    var pinned by remember(noteId) { mutableStateOf(true) }
+    var pinned by remember(noteId) { mutableStateOf(false) }
+    var showOpenNotes by remember(noteId) { mutableStateOf(false) }
+    var openNotes by remember(noteId) { mutableStateOf<List<NoteMetadata>>(emptyList()) }
     val stateFile = remember { File(System.getProperty("user.home") + "/.notecraft/quick_note_" + noteId + ".txt") }
 
     val (sx, sy, sw, sh) = remember {
@@ -113,25 +119,26 @@ fun ApplicationScope.QuickNoteWindow(
         } else listOf(320, 180, 420, 360)
     }
 
-    LaunchedEffect(noteId) {
-        scope.launch {
-            try {
-                val note = noteRepository.getNote(noteId)
-                title = note.title
-                content = note.content
-                loaded = true
-            } catch (_: Exception) {
-                loaded = true
-            }
+    LaunchedEffect(activeNoteId) {
+        loaded = false
+        title = ""
+        content = ""
+        try {
+            val note = noteRepository.getNote(activeNoteId)
+            title = note.title
+            content = note.content
+        } catch (_: Exception) {
+        } finally {
+            loaded = true
         }
     }
 
-    LaunchedEffect(noteId, title, content, loaded) {
+    LaunchedEffect(activeNoteId, title, content, loaded) {
         if (!loaded) return@LaunchedEffect
         delay(650)
         try {
             noteRepository.updateNote(
-                noteId,
+                activeNoteId,
                 SaveNoteRequest(
                     title = title,
                     content = content,
@@ -153,7 +160,7 @@ fun ApplicationScope.QuickNoteWindow(
         if (loaded) {
             scope.launch {
                 try {
-                    noteRepository.updateNote(noteId, SaveNoteRequest(title, content, ""))
+                    noteRepository.updateNote(activeNoteId, SaveNoteRequest(title, content, ""))
                     onNoteSaved()
                 } catch (_: Exception) {
                 }
@@ -170,7 +177,7 @@ fun ApplicationScope.QuickNoteWindow(
         if (loaded) {
             runBlocking {
                 try {
-                    noteRepository.updateNote(noteId, SaveNoteRequest(title, content, ""))
+                    noteRepository.updateNote(activeNoteId, SaveNoteRequest(title, content, ""))
                     onNoteSaved()
                 } catch (_: Exception) {
                 }
@@ -189,23 +196,53 @@ fun ApplicationScope.QuickNoteWindow(
         alwaysOnTop = pinned
     ) {
         val windowScope = this
-        QuickNoteContent(
-            windowScope = windowScope,
-            loaded = loaded,
-            title = title,
-            content = content,
-            pinned = pinned,
-            onTitleChange = { title = it },
-            onContentChange = { content = it },
-            onPinToggle = { pinned = !pinned },
-            onClear = {
-                title = ""
-                content = ""
-            },
-            onSave = saveNow,
-            onClose = persistAndClose,
-            modifier = Modifier.fillMaxSize()
-        )
+        NotecraftTheme {
+            QuickNoteContent(
+                windowScope = windowScope,
+                loaded = loaded,
+                title = title,
+                content = content,
+                pinned = pinned,
+                onTitleChange = { title = it },
+                onContentChange = { content = it },
+                onPinToggle = { pinned = !pinned },
+                onNew = {
+                    scope.launch {
+                        try {
+                            noteRepository.updateNote(activeNoteId, SaveNoteRequest(title, content, ""))
+                            val note = noteRepository.createNote(SaveNoteRequest(title = "", content = "", category = ""))
+                            activeNoteId = note.id
+                            onNoteSaved()
+                        } catch (_: Exception) {
+                        }
+                    }
+                },
+                openNotes = openNotes,
+                showOpenNotes = showOpenNotes,
+                onOpenClick = {
+                    scope.launch {
+                        openNotes = try {
+                            noteRepository.listNotes().filter { it.id != activeNoteId }
+                        } catch (_: Exception) {
+                            emptyList()
+                        }
+                        showOpenNotes = true
+                    }
+                },
+                onOpenDismiss = { showOpenNotes = false },
+                onOpenNote = { selectedNoteId ->
+                    showOpenNotes = false
+                    activeNoteId = selectedNoteId
+                },
+                onClear = {
+                    title = ""
+                    content = ""
+                },
+                onSave = saveNow,
+                onClose = persistAndClose,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
     }
 }
 
@@ -219,6 +256,12 @@ private fun QuickNoteContent(
     onTitleChange: (String) -> Unit,
     onContentChange: (String) -> Unit,
     onPinToggle: () -> Unit,
+    onNew: () -> Unit,
+    openNotes: List<NoteMetadata>,
+    showOpenNotes: Boolean,
+    onOpenClick: () -> Unit,
+    onOpenDismiss: () -> Unit,
+    onOpenNote: (String) -> Unit,
     onClear: () -> Unit,
     onSave: () -> Unit,
     onClose: () -> Unit,
@@ -236,55 +279,56 @@ private fun QuickNoteContent(
             }
         } else {
             Column(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
-                Box(modifier = Modifier.fillMaxWidth().height(54.dp)) {
-                    with(windowScope) {
-                        WindowDraggableArea(modifier = Modifier.fillMaxSize()) {
-                            Row(
-                                modifier = Modifier.fillMaxSize().padding(start = 16.dp, end = 104.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                Image(
-                                    painter = painterResource("notecraft_logo.png"),
-                                    contentDescription = Strings.appBrandName,
-                                    modifier = Modifier.size(30.dp)
+                Row(
+                    modifier = Modifier.fillMaxWidth().height(60.dp).padding(start = 20.dp, end = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    QuickNoteTab(text = "新建", selected = true, onClick = onNew)
+                    Box {
+                        QuickNoteTab(text = "打开", selected = false, onClick = onOpenClick)
+                        DropdownMenu(
+                            expanded = showOpenNotes,
+                            onDismissRequest = onOpenDismiss,
+                            modifier = Modifier.widthIn(min = 220.dp, max = 300.dp)
+                        ) {
+                            if (openNotes.isEmpty()) {
+                                DropdownMenuItem(
+                                    text = { Text("没有可打开的笔记") },
+                                    onClick = onOpenDismiss,
+                                    enabled = false
                                 )
-                                Text(
-                                    text = Strings.quickNote,
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                                Text(
-                                    text = "自动保存",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.62f),
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
+                            } else {
+                                openNotes.forEach { note ->
+                                    DropdownMenuItem(
+                                        text = {
+                                            Text(
+                                                text = note.title.ifBlank { "无标题笔记" },
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        },
+                                        onClick = { onOpenNote(note.id) }
+                                    )
+                                }
                             }
                         }
                     }
-                    Row(
-                        modifier = Modifier.align(Alignment.CenterEnd).padding(end = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(18.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = if (pinned) "置顶" else "常规",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.62f),
-                            style = MaterialTheme.typography.labelSmall,
-                            modifier = Modifier.clickable { onPinToggle() }
-                        )
-                        Text(
-                            text = "×",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f),
-                            style = MaterialTheme.typography.titleMedium,
-                            modifier = Modifier.clickable { onClose() }
-                        )
+                    with(windowScope) {
+                        WindowDraggableArea(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                            Box(modifier = Modifier.fillMaxSize())
+                        }
                     }
+                    QuickNoteHeaderButton(
+                        label = if (pinned) "取消置顶" else "置顶",
+                        text = "⌖",
+                        active = pinned,
+                        onClick = onPinToggle
+                    )
+                    QuickNoteHeaderButton(
+                        label = "关闭",
+                        text = "×",
+                        onClick = onClose
+                    )
                 }
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.68f))
 
@@ -314,15 +358,15 @@ private fun QuickNoteContent(
                             }
                         }
                     )
-                    Spacer(Modifier.height(14.dp))
+                    Spacer(Modifier.height(12.dp))
                     BasicTextField(
                         value = content,
                         onValueChange = onContentChange,
-                        textStyle = MaterialTheme.typography.titleMedium.copy(
+                        textStyle = MaterialTheme.typography.bodyLarge.copy(
                             color = MaterialTheme.colorScheme.onSurface
                         ),
                         cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                        modifier = Modifier.fillMaxWidth().weight(1f),
+                        modifier = Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()),
                         decorationBox = { inner ->
                             Box(modifier = Modifier.fillMaxSize()) {
                                 if (content.isBlank()) {
@@ -366,6 +410,54 @@ private fun QuickNoteContent(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun QuickNoteTab(text: String, selected: Boolean, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .height(60.dp)
+            .width(70.dp)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = text,
+            color = if (selected) Color(0xFF2F6B49) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.62f),
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold
+        )
+        if (selected) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .width(30.dp)
+                    .height(2.dp)
+                    .background(Color(0xFF2F6B49), RoundedCornerShape(1.dp))
+            )
+        }
+    }
+}
+
+@Composable
+private fun QuickNoteHeaderButton(
+    label: String,
+    text: String,
+    active: Boolean = false,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .size(40.dp)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.titleMedium,
+            color = if (active) Color(0xFF2F6B49) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+        )
     }
 }
 
