@@ -33,18 +33,18 @@ import kotlinx.coroutines.runBlocking
 
 @OptIn(ExperimentalComposeUiApi::class)
 fun main() = application {
-    val dataDir = System.getProperty("user.home") + File.separator + ".notecraft"
+    val dataDir = remember { System.getProperty("user.home") + File.separator + ".notecraft" }
     File(dataDir).mkdirs()
-    val noteRepo = NoteRepositoryImpl(JvmNoteStorage(dataDir))
-    val settingsRepo = SettingsRepositoryImpl(JvmSettingsStorage(dataDir))
-    val fileDialog = JvmFileDialogService()
+    val noteRepo = remember(dataDir) { NoteRepositoryImpl(JvmNoteStorage(dataDir)) }
+    val settingsRepo = remember(dataDir) { SettingsRepositoryImpl(JvmSettingsStorage(dataDir)) }
+    val fileDialog = remember { JvmFileDialogService() }
 
-    val appConfig = runBlocking {
+    val appConfig = remember(settingsRepo) { runBlocking {
         try { settingsRepo.getConfig() } catch (_: Exception) { null }
-    }
+    } }
 
     // Window state persistence
-    val stateFile = File(dataDir, "window_state.txt")
+    val stateFile = remember(dataDir) { File(dataDir, "window_state.txt") }
     var savedX = 100; var savedY = 100; var savedW = 1477; var savedH = 952
     if (stateFile.exists()) {
         try {
@@ -53,33 +53,41 @@ fun main() = application {
         } catch (_: Exception) { }
     }
 
-    val windowState = WindowState(
+    val windowState = remember(savedX, savedY, savedW, savedH) { WindowState(
         position = WindowPosition(savedX.dp, savedY.dp),
         size = DpSize(savedW.dp, savedH.dp)
-    )
-    val windowVisible = mutableStateOf(true)
-    val tileNoteIds = mutableStateListOf<String>()
-    val quickNoteIds = mutableStateListOf<String>()
+    ) }
+    val windowVisible = remember { mutableStateOf(true) }
+    val tileNoteIds = remember { mutableStateListOf<String>() }
+    val quickNoteIds = remember { mutableStateListOf<String>() }
     var currentNoteTitle by remember { mutableStateOf<String?>(null) }
-    val settingsToggleSignal = mutableStateOf(0)
-    val notesRefreshSignal = mutableStateOf(0)
+    val settingsToggleSignal = remember { mutableStateOf(0) }
+    val notesRefreshSignal = remember { mutableStateOf(0) }
     val scope = rememberCoroutineScope()
 
-    val launchQuickNote: () -> Unit = {
+    val launchQuickNote: () -> Unit = remember(noteRepo) {
+        {
         scope.launch {
-            val note = noteRepo.createNote(SaveNoteRequest(title = "", content = "", category = ""))
-            if (note.id !in quickNoteIds) quickNoteIds.add(note.id)
-            notesRefreshSignal.value++
+            try {
+                val note = noteRepo.createNote(SaveNoteRequest(title = "", content = "", category = ""))
+                if (note.id !in quickNoteIds) quickNoteIds.add(note.id)
+                notesRefreshSignal.value++
+            } catch (error: Exception) {
+                System.err.println("Failed to open portable note: ${error.message}")
+                error.printStackTrace()
+            }
         }
-    }
+    } }
 
     // Shortcut manager
-    val shortcutMgr = ShortcutManager(
+    val shortcutMgr = remember {
+        ShortcutManager(
         onQuickNote = launchQuickNote,
         onToggleVisibility = { windowVisible.value = !windowVisible.value }
     )
-    if (appConfig != null) shortcutMgr.registerFromConfig(appConfig)
-    DisposableEffect(shortcutMgr) {
+    }
+    DisposableEffect(shortcutMgr, appConfig) {
+        appConfig?.let(shortcutMgr::registerFromConfig)
         val dispatcher = java.awt.KeyEventDispatcher { event ->
             event.id == KeyEvent.KEY_PRESSED && shortcutMgr.handleKeyEvent(event.keyCode, event.modifiersEx)
         }
@@ -108,30 +116,34 @@ fun main() = application {
     }
 
     // Tray setup
-    lateinit var tray: TrayManager
-    tray = TrayManager(
-        dataDir = dataDir,
-        onShowMain = { windowVisible.value = true },
-        onQuit = {
-            tray.dispose()
-            exitApplication()
-        }
-    )
-    tray.init()
+    val tray = remember(dataDir) {
+        TrayManager(
+            dataDir = dataDir,
+            onShowMain = { windowVisible.value = true },
+            onQuit = { exitApplication() }
+        )
+    }
+    DisposableEffect(tray) {
+        tray.init()
+        onDispose { tray.dispose() }
+    }
 
     // File drop target setup
-    val dropHandler = FileDropHandler(noteRepo) { /* refresh handled by NoteApp */ }
-    Thread {
-        try {
-            Thread.sleep(1000)
-            for (w in java.awt.Window.getWindows()) {
-                if (w.isShowing && w is javax.swing.JFrame && w.title == Strings.appDisplayName) {
-                    dropHandler.setup(w)
-                    break
+    DisposableEffect(noteRepo) {
+        val dropHandler = FileDropHandler(noteRepo) { /* refresh handled by NoteApp */ }
+        Thread {
+            try {
+                Thread.sleep(1000)
+                for (w in java.awt.Window.getWindows()) {
+                    if (w.isShowing && w is javax.swing.JFrame && w.title == Strings.appDisplayName) {
+                        dropHandler.setup(w)
+                        break
+                    }
                 }
-            }
-        } catch (_: Exception) {}
-    }.apply { isDaemon = true }.start()
+            } catch (_: Exception) {}
+        }.apply { isDaemon = true }.start()
+        onDispose { }
+    }
 
     val requestClose = {
         val config = runBlocking {

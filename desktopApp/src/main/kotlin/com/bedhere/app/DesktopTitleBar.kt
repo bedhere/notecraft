@@ -3,6 +3,7 @@
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -38,10 +39,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Popup
-import androidx.compose.ui.window.PopupProperties
 import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.WindowScope
 import androidx.compose.ui.window.WindowState
@@ -304,28 +302,28 @@ private fun WindowButton(
     icon: @Composable (Color) -> Unit,
     onClick: () -> Unit
 ) {
-    WindowTooltip(label = label) {
-        val interactionSource = remember { MutableInteractionSource() }
-        val isHovered by interactionSource.collectIsHoveredAsState()
+    val interactionSource = remember { MutableInteractionSource() }
+    val isHovered by interactionSource.collectIsHoveredAsState()
 
-        Box(
-            modifier = Modifier
-                .size(AppSpacing.titleBarButtonSize)
-                .hoverable(interactionSource)
-                .then(
-                    if (isHovered) Modifier.background(
-                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
-                        shape = RoundedCornerShape(6.dp)
-                    ) else Modifier
-                )
-                .pointerInput(onClick) {
-                    detectTapGestures(onTap = { onClick() })
-                }
-                .semantics { contentDescription = label },
-            contentAlignment = Alignment.Center
-        ) {
-            icon(MaterialTheme.colorScheme.onSurfaceVariant)
-        }
+    Box(
+        modifier = Modifier
+            .size(AppSpacing.titleBarButtonSize)
+            .hoverable(interactionSource)
+            .then(
+                if (isHovered) Modifier.background(
+                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
+                    shape = RoundedCornerShape(6.dp)
+                ) else Modifier
+            )
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick
+            )
+            .semantics { contentDescription = label },
+        contentAlignment = Alignment.Center
+    ) {
+        icon(MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -335,63 +333,31 @@ private fun CloseButton(
     icon: @Composable (Color) -> Unit,
     onClick: () -> Unit
 ) {
-    WindowTooltip(label = label) {
-        val interactionSource = remember { MutableInteractionSource() }
-        val isHovered by interactionSource.collectIsHoveredAsState()
-
-        Box(
-            modifier = Modifier
-                .size(AppSpacing.titleBarButtonSize)
-                .hoverable(interactionSource)
-                .then(
-                    if (isHovered) Modifier.background(
-                        MaterialTheme.colorScheme.error.copy(alpha = 0.85f),
-                        shape = RoundedCornerShape(6.dp)
-                    ) else Modifier
-                )
-                .pointerInput(onClick) {
-                    detectTapGestures(onTap = { onClick() })
-                }
-                .semantics { contentDescription = label },
-            contentAlignment = Alignment.Center
-        ) {
-            icon(
-                if (isHovered) Color.White
-                else MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-}
-
-@Composable
-private fun WindowTooltip(
-    label: String,
-    content: @Composable () -> Unit
-) {
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
 
-    Box(modifier = Modifier.hoverable(interactionSource)) {
-        content()
-        if (isHovered) {
-            Popup(
-                alignment = Alignment.BottomCenter,
-                offset = IntOffset(0, 8),
-                properties = PopupProperties(focusable = false)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .background(MaterialTheme.colorScheme.inverseSurface, RoundedCornerShape(6.dp))
-                        .padding(horizontal = 8.dp, vertical = 5.dp)
-                ) {
-                    Text(
-                        text = label,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.inverseOnSurface
-                    )
-                }
-            }
-        }
+    Box(
+        modifier = Modifier
+            .size(AppSpacing.titleBarButtonSize)
+            .hoverable(interactionSource)
+            .then(
+                if (isHovered) Modifier.background(
+                    MaterialTheme.colorScheme.error.copy(alpha = 0.85f),
+                    shape = RoundedCornerShape(6.dp)
+                ) else Modifier
+            )
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick
+            )
+            .semantics { contentDescription = label },
+        contentAlignment = Alignment.Center
+    ) {
+        icon(
+            if (isHovered) Color.White
+            else MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
