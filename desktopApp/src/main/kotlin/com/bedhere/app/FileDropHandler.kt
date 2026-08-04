@@ -6,11 +6,23 @@ import com.notecraft.util.NoteUtils
 import java.awt.datatransfer.DataFlavor
 import java.awt.dnd.*
 import java.io.File
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class FileDropHandler(
     private val noteRepository: NoteRepository,
     private val onNoteCreated: () -> Unit
 ) {
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    fun dispose() {
+        scope.cancel()
+    }
+
 
     fun setup(component: java.awt.Component) {
         DropTarget(component, object : DropTargetAdapter() {
@@ -39,13 +51,17 @@ class FileDropHandler(
             val title = extractTitle(content).ifEmpty {
                 file.nameWithoutExtension
             }
-            kotlinx.coroutines.runBlocking {
-                noteRepository.createNote(SaveNoteRequest(
-                    title = title,
-                    content = content,
-                    category = ""
-                ))
-                onNoteCreated()
+            scope.launch {
+                try {
+                    noteRepository.createNote(SaveNoteRequest(
+                        title = title,
+                        content = content,
+                        category = ""
+                    ))
+                    withContext(Dispatchers.Main) { onNoteCreated() }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
             }
         } catch (e: Exception) {
             e.printStackTrace()

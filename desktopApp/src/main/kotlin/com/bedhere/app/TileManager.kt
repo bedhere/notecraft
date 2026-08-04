@@ -31,7 +31,6 @@ import com.notecraft.util.NoteUtils
 import com.notecraft.util.Strings
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import java.io.File
 
 data class TileInfo(
@@ -168,22 +167,25 @@ fun ApplicationScope.QuickNoteWindow(
         }
     }
 
-    val persistAndClose = {
+    val persistAndClose: () -> Unit = {
         val pos = windowState.position
         val sz = windowState.size
         val absX = if (pos is WindowPosition.Absolute) pos.x.value.toInt() else sx
         val absY = if (pos is WindowPosition.Absolute) pos.y.value.toInt() else sy
         stateFile.writeText(absX.toString() + "," + absY.toString() + "," + sz.width.value.toInt().toString() + "," + sz.height.value.toInt().toString())
         if (loaded) {
-            runBlocking {
+            scope.launch {
                 try {
                     noteRepository.updateNote(activeNoteId, SaveNoteRequest(title, content, ""))
                     onNoteSaved()
                 } catch (_: Exception) {
+                } finally {
+                    onClose()
                 }
             }
+        } else {
+            onClose()
         }
-        onClose()
     }
 
     Window(

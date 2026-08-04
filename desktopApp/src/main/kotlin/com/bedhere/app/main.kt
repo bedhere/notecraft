@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -19,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.*
 import com.notecraft.data.repository.NoteRepositoryImpl
 import com.notecraft.data.repository.SettingsRepositoryImpl
+import com.notecraft.domain.model.AppConfig
 import com.notecraft.domain.model.SaveNoteRequest
 import com.notecraft.importexport.JvmFileDialogService
 import com.notecraft.storage.JvmNoteStorage
@@ -29,7 +31,6 @@ import java.awt.KeyboardFocusManager
 import java.awt.event.KeyEvent
 import java.io.File
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 
 @OptIn(ExperimentalComposeUiApi::class)
 fun main() = application {
@@ -39,9 +40,10 @@ fun main() = application {
     val settingsRepo = remember(dataDir) { SettingsRepositoryImpl(JvmSettingsStorage(dataDir)) }
     val fileDialog = remember { JvmFileDialogService() }
 
-    val appConfig = remember(settingsRepo) { runBlocking {
-        try { settingsRepo.getConfig() } catch (_: Exception) { null }
-    } }
+    var appConfig by remember(settingsRepo) { mutableStateOf<AppConfig?>(null) }
+    LaunchedEffect(settingsRepo) {
+        appConfig = try { settingsRepo.getConfig() } catch (_: Exception) { null }
+    }
 
     // Window state persistence
     val stateFile = remember(dataDir) { File(dataDir, "window_state.txt") }
@@ -61,6 +63,7 @@ fun main() = application {
     val tileNoteIds = remember { mutableStateListOf<String>() }
     val quickNoteIds = remember { mutableStateListOf<String>() }
     var currentNoteTitle by remember { mutableStateOf<String?>(null) }
+    var closeRequested by remember { mutableStateOf(false) }
     val settingsToggleSignal = remember { mutableStateOf(0) }
     val notesRefreshSignal = remember { mutableStateOf(0) }
     val scope = rememberCoroutineScope()
@@ -142,23 +145,35 @@ fun main() = application {
                 }
             } catch (_: Exception) {}
         }.apply { isDaemon = true }.start()
-        onDispose { }
+        onDispose { dropHandler.dispose() }
     }
 
-    val requestClose = {
-        val config = runBlocking {
-            try { settingsRepo.getConfig() } catch (_: Exception) { null }
-        }
-        if (config?.closeToTray == true) {
+    val requestClose: () -> Unit = {
+        if (!closeRequested) {
+            closeRequested = true
+            // Remove the window immediately; persistence and shutdown continue off the UI path.
             windowVisible.value = false
-        } else {
-            val pos = windowState.position
-            val sz = windowState.size
-            val absX = if (pos is WindowPosition.Absolute) pos.x.value.toInt() else savedX
-            val absY = if (pos is WindowPosition.Absolute) pos.y.value.toInt() else savedY
-            stateFile.writeText(absX.toString() + "," + absY.toString() + "," + sz.width.value.toInt().toString() + "," + sz.height.value.toInt().toString())
-            tray.dispose()
-            exitApplication()
+            scope.launch {
+                val config = try { settingsRepo.getConfig() } catch (_: Exception) { null }
+                if (config?.closeToTray == true) {
+                    closeRequested = false
+                } else {
+                    val pos = windowState.position
+                    val sz = windowState.size
+                    val absX = if (pos is WindowPosition.Absolute) pos.x.value.toInt() else savedX
+                    val absY = if (pos is WindowPosition.Absolute) pos.y.value.toInt() else savedY
+                    try {
+                        stateFile.writeText(
+                            absX.toString() + "," + absY.toString() + "," +
+                                sz.width.value.toInt().toString() + "," + sz.height.value.toInt()
+                        )
+                    } catch (_: Exception) {
+                        // Closing should still succeed when the state file is not writable.
+                    }
+                    tray.dispose()
+                    exitApplication()
+                }
+            }
         }
     }
 

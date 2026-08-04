@@ -1,4 +1,3 @@
-import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -16,12 +15,8 @@ kotlin {
 
     jvm()
     
+    // The web entry point uses the JS variant by default to avoid a network-only Wasm toolchain.
     js {
-        browser()
-    }
-    
-    @OptIn(ExperimentalWasmDsl::class)
-    wasmJs {
         browser()
     }
     

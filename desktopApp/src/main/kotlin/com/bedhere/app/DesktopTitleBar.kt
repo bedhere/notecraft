@@ -3,7 +3,6 @@
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -26,6 +25,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.WindowScope
 import androidx.compose.ui.window.WindowState
+import androidx.compose.ui.zIndex
 import com.notecraft.ui.theme.AppSpacing
 import com.notecraft.util.Strings
 
@@ -68,13 +69,15 @@ fun DesktopTitleBar(
         modifier = Modifier
             .fillMaxWidth()
             .height(AppSpacing.titleBarHeight)
+            .background(MaterialTheme.colorScheme.surface)
     ) {
         // WindowDraggableArea handles window dragging and double-tap
         with(windowScope) {
             WindowDraggableArea(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.surface)
+                    // Keep the control strip outside the draggable hit target.
+                    .padding(end = 192.dp)
                     .pointerInput(windowState.placement) {
                         detectTapGestures(onDoubleTap = { toggleMaximize() })
                     }
@@ -82,7 +85,7 @@ fun DesktopTitleBar(
                 Row(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(start = 18.dp, end = 206.dp),
+                        .padding(start = 18.dp, end = 16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Image(
@@ -123,7 +126,8 @@ fun DesktopTitleBar(
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .fillMaxHeight()
-                .padding(end = 6.dp),
+                .padding(end = 6.dp)
+                .zIndex(1f),
             verticalAlignment = Alignment.CenterVertically
         ) {
             WindowButton(
@@ -303,6 +307,7 @@ private fun WindowButton(
     onClick: () -> Unit
 ) {
     val interactionSource = remember { MutableInteractionSource() }
+    val onClickState = rememberUpdatedState(onClick)
     val isHovered by interactionSource.collectIsHoveredAsState()
 
     Box(
@@ -315,11 +320,9 @@ private fun WindowButton(
                     shape = RoundedCornerShape(6.dp)
                 ) else Modifier
             )
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = onClick
-            )
+            .pointerInput(Unit) {
+                detectTapGestures(onTap = { onClickState.value() })
+            }
             .semantics { contentDescription = label },
         contentAlignment = Alignment.Center
     ) {
@@ -334,6 +337,7 @@ private fun CloseButton(
     onClick: () -> Unit
 ) {
     val interactionSource = remember { MutableInteractionSource() }
+    val onClickState = rememberUpdatedState(onClick)
     val isHovered by interactionSource.collectIsHoveredAsState()
 
     Box(
@@ -346,11 +350,9 @@ private fun CloseButton(
                     shape = RoundedCornerShape(6.dp)
                 ) else Modifier
             )
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = onClick
-            )
+            .pointerInput(Unit) {
+                detectTapGestures(onTap = { onClickState.value() })
+            }
             .semantics { contentDescription = label },
         contentAlignment = Alignment.Center
     ) {

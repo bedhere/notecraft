@@ -5,7 +5,11 @@ import com.notecraft.data.repository.SettingsRepositoryImpl
 import com.notecraft.storage.JvmSettingsStorage
 import java.awt.*
 import java.awt.image.BufferedImage
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 
 class TrayManager(
     private val dataDir: String,
@@ -13,6 +17,7 @@ class TrayManager(
     private val onQuit: () -> Unit
 ) {
     private var trayIcon: TrayIcon? = null
+    private val ioScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     fun init() {
         if (!SystemTray.isSupported()) return
@@ -32,6 +37,7 @@ class TrayManager(
             try { SystemTray.getSystemTray().remove(it) } catch (_: Exception) {}
             trayIcon = null
         }
+        ioScope.cancel()
     }
 
     private fun removeExisting() {
@@ -60,9 +66,6 @@ class TrayManager(
 
     private fun createPopup(): PopupMenu {
         val settingsRepo = SettingsRepositoryImpl(JvmSettingsStorage(dataDir))
-        val config = try { runBlocking { settingsRepo.getConfig() } } catch (_: Exception) { null }
-        val closeToTray = config?.closeToTray ?: false
-
         val menu = PopupMenu()
 
         val showItem = MenuItem(Strings.trayShow)
@@ -70,11 +73,20 @@ class TrayManager(
         menu.add(showItem)
 
         val trayItem = CheckboxMenuItem(Strings.trayCloseToTray)
-        trayItem.state = closeToTray
+        trayItem.state = false
+        ioScope.launch {
+            val closeToTray = try { settingsRepo.getConfig().closeToTray } catch (_: Exception) { false }
+            EventQueue.invokeLater { trayItem.state = closeToTray }
+        }
         trayItem.addItemListener {
-            runBlocking {
-                val c = settingsRepo.getConfig()
-                settingsRepo.saveConfig(c.copy(closeToTray = trayItem.state))
+            val enabled = trayItem.state
+            ioScope.launch {
+                try {
+                    val c = settingsRepo.getConfig()
+                    settingsRepo.saveConfig(c.copy(closeToTray = enabled))
+                } catch (_: Exception) {
+                    // A tray toggle should not block or crash the AWT event thread.
+                }
             }
         }
         menu.add(trayItem)
