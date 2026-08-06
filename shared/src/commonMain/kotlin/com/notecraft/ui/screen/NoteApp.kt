@@ -27,6 +27,8 @@ import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -261,6 +263,7 @@ fun NoteApp(
     }
 }
 
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 private fun ResizableVerticalDivider(
     modifier: Modifier = Modifier,
@@ -277,9 +280,10 @@ private fun ResizableVerticalDivider(
 
     Box(
         modifier = modifier
-            .width(10.dp)
+            .width(AppSpacing.splitDividerTouchWidth)
             .fillMaxHeight()
             .hoverable(interactionSource)
+            .pointerHoverIcon(PointerIcon.Crosshair)
             .pointerInput(Unit) {
                 detectDragGestures { change, dragAmount ->
                     change.consume()
@@ -777,7 +781,9 @@ fun EditorPanel(
                     )
                 }
                 ViewMode.SPLIT -> {
-                    if (maxWidth < AppSpacing.splitCollapseWidth) {
+                    val dividerWidth = AppSpacing.splitDividerTouchWidth
+                    val minimumSplitWidth = AppSpacing.splitPaneMinWidth * 2 + dividerWidth
+                    if (maxWidth < minimumSplitWidth) {
                         Column(modifier = Modifier.fillMaxSize()) {
                             EditorMarkdownBody(
                                 contentValue = contentValue,
@@ -788,7 +794,7 @@ fun EditorPanel(
                         }
                     } else {
                         val availableWidth = maxWidth
-                        val leftMaxWidth = availableWidth - AppSpacing.splitPaneMinWidth
+                        val leftMaxWidth = availableWidth - AppSpacing.splitPaneMinWidth - dividerWidth
                         val leftWidth = (availableWidth * splitRatio)
                             .coerceIn(AppSpacing.splitPaneMinWidth, leftMaxWidth)
                         Row(modifier = Modifier.fillMaxSize()) {
@@ -799,11 +805,10 @@ fun EditorPanel(
                                 modifier = Modifier.width(leftWidth).fillMaxHeight()
                             )
                             ResizableVerticalDivider(
-                                modifier = Modifier.padding(horizontal = AppSpacing.lg),
                                 onDrag = { delta ->
                                     val newLeft = (leftWidth + delta)
                                         .coerceIn(AppSpacing.splitPaneMinWidth, leftMaxWidth)
-                                    splitRatio = (newLeft.value / availableWidth.value).coerceIn(0.28f, 0.72f)
+                                    splitRatio = newLeft.value / availableWidth.value
                                 }
                             )
                             PreviewPane(
