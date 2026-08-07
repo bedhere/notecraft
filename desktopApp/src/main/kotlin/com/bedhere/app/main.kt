@@ -133,7 +133,7 @@ fun main() = application {
 
     // File drop target setup
     DisposableEffect(noteRepo) {
-        val dropHandler = FileDropHandler(noteRepo) { /* refresh handled by NoteApp */ }
+        val dropHandler = FileDropHandler(noteRepo) { notesRefreshSignal.value++ }
         Thread {
             try {
                 Thread.sleep(1000)
